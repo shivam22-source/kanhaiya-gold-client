@@ -212,7 +212,6 @@ function Dashboard() {
   }
 
   function updateShop(key, value) {
-    if (key === 'footerCredit') return;
     setShop((current) => ({ ...current, [key]: value, footerCredit: defaultShop.footerCredit }));
   }
 
@@ -364,7 +363,6 @@ function Dashboard() {
               <Field label="Appraiser Bank A/c No." value={shop.appraiserAccount} onChange={(value) => updateShop('appraiserAccount', value)} />
               <label className="block md:col-span-2"><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Upload Gold Items Photo</span><input className="block h-10 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800" type="file" accept="image/*" onChange={(event) => handleGoldItemUpload(event.target.files?.[0])}/></label>
               <div className="flex items-end"><div className="flex h-20 w-20 items-center justify-center border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">{shop.qrImage ? <img className="h-full w-full object-contain" src={shop.qrImage} alt="QR preview" /> : 'QR'}</div></div>
-              <Field label="Footer Credit" value={defaultShop.footerCredit} onChange={() => {}} className="md:col-span-2 xl:col-span-4" readOnly />
             </div>}
           </Section>
 
