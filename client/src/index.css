@@ -52,12 +52,26 @@ textarea {
     font-size: 16px;
   }
 
-  /* Reserve space for both fixed mobile action/navigation bars. */
+  /* Reserve space for the fixed bottom navigation. Add action-bar space only on Review. */
   main.min-h-screen.pb-24 {
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  /* Review is the third step button in the mobile step selector. */
+  main:has(> div:nth-child(2) > div:nth-child(2) > button:nth-child(3).bg-indigo-600) {
     padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
   }
 
-  /* Use a 3-column grid so all actions are exactly the same width. */
+  /* Save / Generate PDF / Share belong only to the final Review step. */
+  div.fixed.bottom-16.left-0.right-0.z-30 {
+    display: none;
+  }
+
+  main:has(> div:nth-child(2) > div:nth-child(2) > button:nth-child(3).bg-indigo-600) div.fixed.bottom-16.left-0.right-0.z-30 {
+    display: block;
+  }
+
+  /* Keep all three actions exactly the same width. */
   div.fixed.bottom-16.left-0.right-0.z-30 > div {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -74,7 +88,7 @@ textarea {
     white-space: nowrap;
   }
 
-  /* Keep the action bar clearly above bottom navigation and phone gesture area. */
+  /* Keep the action bar above bottom navigation and the phone gesture area. */
   div.fixed.bottom-16.left-0.right-0.z-30 {
     bottom: calc(4.25rem + env(safe-area-inset-bottom));
   }
