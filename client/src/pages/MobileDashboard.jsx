@@ -452,14 +452,14 @@ function MobileDashboard() {
                         <Field
                           label="Market Value"
                           type="number"
-                          value={row.marketManual || Number(row.netWeight) > 0 ? row.marketValue : ''}
+                          value={row.marketManual || row.netWeight !== '' ? row.marketValue : ''}
                           onChange={(v) => updateRow(row.id, 'marketValue', v)}
                         />
                       </div>
                       <div className="flex items-center justify-between rounded-2xl bg-white p-3 ring-1 ring-slate-200">
                         <div>
                           <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Auto valuation</p>
-                          <p className="mt-1 text-lg font-black text-slate-900">{row.marketManual || Number(row.netWeight) > 0 ? `₹${formatMoney(row.marketValue)}` : '—'}</p>
+                          <p className="mt-1 text-lg font-black text-slate-900">{row.marketManual || row.netWeight !== '' ? `₹${formatMoney(row.marketValue)}` : '—'}</p>
                         </div>
                         {row.marketManual && <button onClick={() => resetMarketValue(row.id)} className="rounded-xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">Use Auto</button>}
                       </div>
