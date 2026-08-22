@@ -42,18 +42,20 @@ textarea {
 }
 
 /* Shop master fields are fixed configuration on both desktop and mobile.
-   Keep the photo file chooser usable, but prevent edits to the other fields
-   inside the Shop Details card. */
+   Use Tailwind utilities for the locked visual state while keeping the
+   photo file chooser usable. */
 main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:not([type="file"]) {
+  @apply cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500;
   pointer-events: none !important;
   touch-action: none !important;
-  -webkit-user-modify: read-only !important;
-  user-modify: read-only !important;
   caret-color: transparent !important;
   user-select: none !important;
-  cursor: not-allowed !important;
-  background: #f8fafc;
-  color: #334155;
+}
+
+@layer components {
+  input:disabled {
+    @apply cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500 opacity-100;
+  }
 }
 
 @media (max-width: 767px) {
