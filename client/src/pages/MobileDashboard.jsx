@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
@@ -110,6 +110,7 @@ function MobileDashboard() {
   const [marketRates, setMarketRates] = useState(null);
   const [marketMeta, setMarketMeta] = useState(null);
   const [marketLoading, setMarketLoading] = useState(false);
+  const appUrlRef = useRef(window.location.href);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(shop));
@@ -127,6 +128,22 @@ function MobileDashboard() {
       localStorage.removeItem(marketRateStorageKey);
     }
   }, []);
+
+  // Native-app style Back behavior inside the certificate flow.
+  // Items -> Details, Review -> Items, while Details -> actual browser/app exit.
+  useEffect(() => {
+    window.history.replaceState({ kanhaiyaApp: true }, '', appUrlRef.current);
+
+    const handlePopState = () => {
+      if (step > 0) {
+        window.history.pushState({ kanhaiyaApp: true }, '', appUrlRef.current);
+        setStep((current) => Math.max(0, current - 1));
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [step]);
 
   const calculatedRows = useMemo(() => calculateRows(rows, rates), [rows, rates]);
   const totals = useMemo(() => calculateTotals(calculatedRows), [calculatedRows]);
