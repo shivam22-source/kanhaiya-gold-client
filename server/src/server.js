@@ -28,6 +28,14 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 app.use('/storage/gold-items', express.static(path.resolve('uploads/gold-items')));
 
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'SBI Gold Appraiser Certificate API',
+    status: 'ok',
+    health: '/api/health',
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
@@ -42,8 +50,8 @@ app.use((error, _req, res, _next) => {
 
 initDatabase()
   .then(() => {
-    app.listen(port, () => {
-      console.log(`Server running on http://127.0.0.1:${port}`);
+    app.listen(port, '0.0.0.0', () => {
+      console.log(`Server running on 0.0.0.0:${port}`);
     });
   })
   .catch((error) => {
