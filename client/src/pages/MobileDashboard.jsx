@@ -15,6 +15,7 @@ import { generateCertificatePdf } from '../utils/pdfGenerator';
 import { API_BASE } from '../utils/config';
 
 const storageKey = 'sbi-gold-appraiser-shop-settings';
+const marketRateStorageKey = 'sbi-gold-appraiser-market-rates';
 
 const defaultShop = {
   nameHindi: 'कन्हैया ज्वेलर्स',
@@ -86,15 +87,55 @@ function MobileDashboard() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [marketRates, setMarketRates] = useState(null);
+  const [marketMeta, setMarketMeta] = useState(null);
+  const [marketLoading, setMarketLoading] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(shop));
   }, [shop]);
 
+  useEffect(() => {
+    const saved = localStorage.getItem(marketRateStorageKey);
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      setMarketRates(parsed.rates || null);
+      setMarketMeta(parsed.meta || null);
+      if (parsed.rates) setRates((current) => ({ ...current, ...parsed.rates }));
+    } catch {
+      localStorage.removeItem(marketRateStorageKey);
+    }
+  }, []);
+
   const calculatedRows = useMemo(() => calculateRows(rows, rates), [rows, rates]);
   const totals = useMemo(() => calculateTotals(calculatedRows), [calculatedRows]);
   const summaries = useMemo(() => groupPuritySummaries(calculatedRows), [calculatedRows]);
   const amountWords = useMemo(() => numberToWordsIndian(totals.marketValue), [totals.marketValue]);
+
+  async function syncMarketRates() {
+    try {
+      setMarketLoading(true);
+      setStatus('Syncing IBJA benchmark rate...');
+      const response = await fetch(`${API_BASE}/market-rates`);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || 'Market-rate sync failed');
+      setMarketRates(result.rates);
+      setMarketMeta(result);
+      localStorage.setItem(marketRateStorageKey, JSON.stringify({ rates: result.rates, meta: result }));
+      setStatus(`IBJA PM rate synced at ${new Date(result.fetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`);
+    } catch (marketError) {
+      setStatus(`Rate sync failed: ${marketError.message}`);
+    } finally {
+      setMarketLoading(false);
+    }
+  }
+
+  function applyMarketRates() {
+    if (!marketRates) return;
+    setRates((current) => ({ ...current, ...marketRates }));
+    setStatus('IBJA rates applied to this certificate');
+  }
 
   function updateForm(key, value) {
     setForm((current) => {
@@ -265,11 +306,7 @@ function MobileDashboard() {
 
         <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200">
           {['Details', 'Gold Items', 'Review'].map((label, index) => (
-            <button
-              key={label}
-              onClick={() => setStep(index)}
-              className={`rounded-xl px-2 py-2.5 text-xs font-bold transition ${step === index ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}
-            >
+            <button key={label} onClick={() => setStep(index)} className={`rounded-xl px-2 py-2.5 text-xs font-bold transition ${step === index ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
               {index + 1}. {label}
             </button>
           ))}
@@ -307,6 +344,38 @@ function MobileDashboard() {
                 </div>
               </div>
             </MobileCard>
+
+            <MobileCard title="Gold Market Rate">
+              <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">IBJA India Benchmark</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">PM benchmark · converted to INR/gm · excludes GST & making charges</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">Official source</span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {['24 Ct', '22 Ct', '20 Ct', '18 Ct', '14 Ct'].map((purity) => (
+                    <div key={purity} className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{purity}</p>
+                      <p className="mt-1 text-base font-black text-slate-900">{marketRates?.[purity] != null ? `₹${Number(marketRates[purity]).toLocaleString('en-IN')}` : '—'}</p>
+                      <p className="text-[10px] text-slate-400">per gm</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={syncMarketRates} disabled={marketLoading} className="flex-1 rounded-xl bg-slate-900 px-3 py-3 text-xs font-bold text-white disabled:opacity-50">
+                    {marketLoading ? 'Syncing…' : 'Sync Latest Rate'}
+                  </button>
+                  <button onClick={applyMarketRates} disabled={!marketRates} className="flex-1 rounded-xl bg-indigo-600 px-3 py-3 text-xs font-bold text-white disabled:opacity-40">
+                    Apply to Appraisal
+                  </button>
+                </div>
+                {marketMeta?.fetchedAt && <p className="mt-2 text-[10px] text-slate-500">Last synced: {new Date(marketMeta.fetchedAt).toLocaleString('en-IN')} · {marketMeta.derived?.includes('20 Ct') ? '20 Ct derived from fineness' : 'All rates published'}</p>}
+                <a href="https://www.ibjarates.com/" target="_blank" rel="noreferrer" className="mt-2 inline-block text-[10px] font-bold text-indigo-600 underline">Verify on IBJA</a>
+              </div>
+            </MobileCard>
+
             <button onClick={() => setStep(1)} className="flex h-12 w-full items-center justify-center rounded-2xl bg-indigo-600 text-sm font-bold text-white shadow-lg shadow-indigo-600/20">Continue to Gold Items →</button>
           </div>
         )}
