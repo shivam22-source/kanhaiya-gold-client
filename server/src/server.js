@@ -12,6 +12,7 @@ const allowedOrigins = new Set([
   process.env.CLIENT_ORIGIN || 'http://127.0.0.1:5173',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'https://kanhaiya-gold-client.vercel.app',
 ]);
 
 app.use(
