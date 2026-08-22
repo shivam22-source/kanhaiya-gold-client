@@ -96,4 +96,14 @@ textarea {
   nav.fixed.bottom-0.left-0.right-0.z-40 {
     padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
   }
+
+  /* Shop master fields are fixed configuration on the phone app. The card that contains
+     the gold-photo picker is the Shop Details card; lock only its text inputs. */
+  main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:not([type="file"]) {
+    pointer-events: none;
+    caret-color: transparent;
+    user-select: none;
+    background: #f8fafc;
+    color: #334155;
+  }
 }
