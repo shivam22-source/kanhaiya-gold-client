@@ -110,6 +110,7 @@ function MobileDashboard() {
   const [marketRates, setMarketRates] = useState(null);
   const [marketMeta, setMarketMeta] = useState(null);
   const [marketLoading, setMarketLoading] = useState(false);
+  const [marketApplied, setMarketApplied] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   useEffect(() => {
@@ -164,14 +165,15 @@ function MobileDashboard() {
   async function syncMarketRates() {
     try {
       setMarketLoading(true);
-      setStatus('Syncing IBJA benchmark rate...');
+      setMarketApplied(false);
+      setStatus('Syncing latest IBJA gold rate...');
       const response = await fetch(`${API_BASE}/market-rates`);
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || 'Market-rate sync failed');
       setMarketRates(result.rates);
       setMarketMeta(result);
       localStorage.setItem(marketRateStorageKey, JSON.stringify({ rates: result.rates, meta: result }));
-      setStatus(`IBJA PM rate synced at ${new Date(result.fetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`);
+      setStatus('Rate synced successfully. Tap “Use This Rate” to apply it to this appraisal.');
     } catch (marketError) {
       setStatus(`Rate sync failed: ${marketError.message}`);
     } finally {
@@ -182,7 +184,8 @@ function MobileDashboard() {
   function applyMarketRates() {
     if (!marketRates) return;
     setRates((current) => ({ ...current, ...marketRates }));
-    setStatus('IBJA rates applied to this certificate');
+    setMarketApplied(true);
+    setStatus('Rate applied successfully — this appraisal now uses the synced IBJA rate.');
   }
 
   function updateForm(key, value) {
@@ -404,9 +407,11 @@ function MobileDashboard() {
                 </div>
                 <div className="mt-3 flex gap-2">
                   <button onClick={syncMarketRates} disabled={marketLoading} className="flex-1 rounded-xl bg-slate-900 px-3 py-3 text-xs font-bold text-white disabled:opacity-50">
-                    {marketLoading ? 'Syncing…' : 'Sync Latest Rate'}
+                    {marketLoading ? '⏳ Syncing…' : '↻ Sync Latest Rate'}
                   </button>
-                  <button onClick={applyMarketRates} disabled={!marketRates} className="flex-1 rounded-xl bg-indigo-600 px-3 py-3 text-xs font-bold text-white disabled:opacity-40">Apply to Appraisal</button>
+                  <button onClick={applyMarketRates} disabled={!marketRates || marketApplied} className={`flex-1 rounded-xl px-3 py-3 text-xs font-bold text-white ${marketApplied ? 'bg-emerald-600' : 'bg-indigo-600'} disabled:opacity-40`}>
+                    {marketApplied ? '✓ Rate Applied' : 'Use This Rate'}
+                  </button>
                 </div>
                 {marketMeta?.fetchedAt && <p className="mt-2 text-[10px] text-slate-500">Last synced: {new Date(marketMeta.fetchedAt).toLocaleString('en-IN')} · {marketMeta.derived?.includes('20 Ct') ? '20 Ct derived from fineness' : 'All rates published'}</p>}
                 {marketMeta?.rateDate && <p className="mt-1 text-[10px] font-bold text-slate-600">Rate date: {marketMeta.rateDate} · latest published business day</p>}
