@@ -67,18 +67,24 @@ const defaultForm = {
   signatureDate: '',
 };
 
-function Field({ label, value, onChange, type = 'text', inputMode, placeholder }) {
+function Field({ label, value, onChange, type = 'text', inputMode, placeholder, readOnly = false, disabled = false, className = '' }) {
   return (
-    <label className="block">
+    <label className={`block ${className}`}>
       <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">{label}</span>
       <input
-        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-[15px] text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+        className={`h-12 w-full rounded-2xl border px-4 text-[15px] shadow-sm outline-none transition ${
+          readOnly || disabled
+            ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500'
+            : 'border-slate-200 bg-white text-slate-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
+        }`}
         type={type}
         inputMode={inputMode}
         autoComplete="off"
         value={value ?? ''}
         placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
+        readOnly={readOnly}
+        disabled={disabled}
+        onChange={(event) => onChange?.(event.target.value)}
       />
     </label>
   );
@@ -474,10 +480,10 @@ function MobileDashboard() {
               </div>
               {shop.itemImageUrl && <div className="mt-3 flex items-center gap-3"><img src={shop.itemImageUrl} alt="Gold item" className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200" /><div><p className="text-sm font-bold text-slate-900">Photo uploaded</p><p className="text-xs text-slate-500">QR is ready for the certificate.</p></div></div>}
               <div className="mt-4 grid gap-3">
-                <Field label="Shop Name" value={shop.nameHindi} onChange={() => {}} />
-                <Field label="Shop Address" value={shop.addressHindi} onChange={() => {}} />
-                <Field label="Registration No." value={shop.registrationNo} onChange={() => {}} />
-                <Field label="Appraiser A/c No." value={shop.appraiserAccount} onChange={() => {}} />
+                <Field label="Shop Name" value={shop.nameHindi} readOnly />
+                <Field label="Shop Address" value={shop.addressHindi} readOnly />
+                <Field label="Registration No." value={shop.registrationNo} readOnly />
+                <Field label="Appraiser A/c No." value={shop.appraiserAccount} readOnly />
               </div>
             </MobileCard>
           </div>
