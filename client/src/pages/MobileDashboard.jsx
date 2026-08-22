@@ -61,6 +61,7 @@ const defaultForm = {
   fatherName: '',
   borrowerAddress: '',
   appraisalDate: '',
+  cashInCharge: '',
   testingMethod: '',
   place: '',
   signatureDate: '',
@@ -206,9 +207,9 @@ function MobileDashboard() {
   }
 
   function validate() {
-    const required = [form.date, form.bankAccount, form.branchName, form.borrowerName, form.fatherName, form.borrowerAddress, form.testingMethod, form.place];
+    const required = [form.date, form.bankAccount, form.branchName, form.borrowerName, form.fatherName, form.borrowerAddress, form.cashInCharge, form.place];
     if (required.some((value) => !String(value || '').trim())) {
-      setError('Please complete the borrower and bank details.');
+      setError('Please complete the borrower, bank, and cash-in-charge details.');
       return false;
     }
     if (calculatedRows.some((row) => !String(row.description || '').trim() || !row.purity)) {
@@ -342,7 +343,7 @@ function MobileDashboard() {
                   <Field label="Appraisal Charge" type="number" value={form.appraisalCharge} onChange={(v) => updateForm('appraisalCharge', Number(v))} />
                   <Field label="Appraisal Date" type="date" value={form.appraisalDate} onChange={(v) => updateForm('appraisalDate', v)} />
                 </div>
-                <Field label="Purity Testing Method" value={form.testingMethod} onChange={(v) => updateForm('testingMethod', v)} />
+                <Field label="Cash-in-charge" value={form.cashInCharge} onChange={(v) => updateForm('cashInCharge', v)} />
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Place" value={form.place} onChange={(v) => updateForm('place', v)} />
                   <Field label="Signature Date" type="date" value={form.signatureDate} onChange={(v) => updateForm('signatureDate', v)} />
