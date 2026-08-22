@@ -128,7 +128,7 @@ function MobileRecordsPage() {
         <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
           <Link to="/" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">New</Link>
           <span className="rounded-2xl bg-indigo-50 py-2 text-center text-xs font-bold text-indigo-700">Records</span>
-          <Link to="/" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">Summary</Link>
+          <Link to="/market-rates" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">Market</Link>
         </div>
       </nav>
     </main>
