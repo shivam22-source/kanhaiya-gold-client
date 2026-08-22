@@ -51,4 +51,33 @@ textarea {
   textarea {
     font-size: 16px;
   }
+
+  /* Reserve space for both fixed mobile action/navigation bars. */
+  main.min-h-screen.pb-24 {
+    padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+  }
+
+  /* Make Save / Generate PDF / Share evenly sized and touch friendly. */
+  div.fixed.bottom-16.left-0.right-0.z-30 > div {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  div.fixed.bottom-16.left-0.right-0.z-30 > div > button {
+    flex: 1 1 0% !important;
+    min-width: 0;
+    height: 3rem;
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+    white-space: nowrap;
+  }
+
+  /* Keep the action bar clearly above bottom navigation and phone gesture area. */
+  div.fixed.bottom-16.left-0.right-0.z-30 {
+    bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
+
+  nav.fixed.bottom-0.left-0.right-0.z-40 {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
 }
