@@ -6,6 +6,11 @@ import { API_BASE } from '../utils/config';
 function MobileRecordsPage() {
   const [records, setRecords] = useState([]);
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [minValue, setMinValue] = useState('');
+  const [maxValue, setMaxValue] = useState('');
+  const [purityFilter, setPurityFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('newest');
@@ -34,14 +39,48 @@ function MobileRecordsPage() {
     };
   }, [search]);
 
+  const purityOptions = useMemo(() => {
+    const values = new Set();
+    records.forEach((record) => {
+      (record.payload?.summaries || []).forEach((summary) => {
+        if (summary.purity) values.add(summary.purity);
+      });
+    });
+    return Array.from(values).sort();
+  }, [records]);
+
   const visibleRecords = useMemo(() => {
-    return [...records].sort((a, b) => {
+    let list = records.filter((record) => {
+      if (dateFrom && (!record.date || record.date < dateFrom)) return false;
+      if (dateTo && (!record.date || record.date > dateTo)) return false;
+      if (minValue && Number(record.totalMarketValue) < Number(minValue)) return false;
+      if (maxValue && Number(record.totalMarketValue) > Number(maxValue)) return false;
+      if (purityFilter !== 'all') {
+        const purities = (record.payload?.summaries || []).map((summary) => summary.purity);
+        if (!purities.includes(purityFilter)) return false;
+      }
+      return true;
+    });
+
+    return [...list].sort((a, b) => {
       if (sortBy === 'value-high') return Number(b.totalMarketValue) - Number(a.totalMarketValue);
       if (sortBy === 'value-low') return Number(a.totalMarketValue) - Number(b.totalMarketValue);
       if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [records, sortBy]);
+  }, [records, dateFrom, dateTo, minValue, maxValue, purityFilter, sortBy]);
+
+  function resetFilters() {
+    setSearch('');
+    setDateFrom('');
+    setDateTo('');
+    setMinValue('');
+    setMaxValue('');
+    setPurityFilter('all');
+    setSortBy('newest');
+  }
+
+  const hasFilters = Boolean(search || dateFrom || dateTo || minValue || maxValue || purityFilter !== 'all' || sortBy !== 'newest');
 
   return (
     <main className="min-h-screen bg-[#f6f7fb] pb-24 text-slate-900">
@@ -66,18 +105,77 @@ function MobileRecordsPage() {
             />
             <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">⌕</span>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {[
-              ['newest', 'Newest'],
-              ['oldest', 'Oldest'],
-              ['value-high', 'Value ↓'],
-              ['value-low', 'Value ↑'],
-            ].map(([value, label]) => (
-              <button key={value} onClick={() => setSortBy(value)} className={`rounded-2xl px-3 py-2.5 text-xs font-bold ${sortBy === value ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                {label}
-              </button>
-            ))}
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Date From</span>
+              <input
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                type="date"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Date To</span>
+              <input
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                type="date"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Min Value (Rs.)</span>
+              <input
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                type="number"
+                value={minValue}
+                onChange={(event) => setMinValue(event.target.value)}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Max Value (Rs.)</span>
+              <input
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                type="number"
+                value={maxValue}
+                onChange={(event) => setMaxValue(event.target.value)}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Purity</span>
+              <select
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                value={purityFilter}
+                onChange={(event) => setPurityFilter(event.target.value)}
+              >
+                <option value="all">All Purities</option>
+                {purityOptions.map((purity) => <option key={purity} value={purity}>{purity}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Sort By</span>
+              <select
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="value-high">Value: High to Low</option>
+                <option value="value-low">Value: Low to High</option>
+              </select>
+            </label>
           </div>
+
+          <button
+            onClick={resetFilters}
+            disabled={!hasFilters}
+            className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Reset Filters
+          </button>
         </section>
 
         <div className="mt-4 flex items-center justify-between px-1">
