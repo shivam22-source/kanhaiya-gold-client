@@ -33,16 +33,6 @@ function drawWrapped(doc, text, x, y, width, lineHeight = 4.2) {
   return y + lines.length * lineHeight;
 }
 
-function drawLineLabel(doc, label, value, x, y, labelWidth, valueWidth) {
-  setFont(doc, 'normal', 9.1);
-  doc.text(label, x, y);
-  doc.line(x + labelWidth, y + 1, x + labelWidth + valueWidth, y + 1);
-  if (value) {
-    setFont(doc, 'bold', 9.1);
-    doc.text(String(value), x + labelWidth + 1.5, y);
-  }
-}
-
 function drawCenteredCellText(doc, text, x, y, width, height, style = 'normal', size = 8.4) {
   setFont(doc, style, size);
   const lines = doc.splitTextToSize(String(text), width - 4);
@@ -58,12 +48,7 @@ function drawLeftCellText(doc, text, x, y, height, style = 'normal', size = 8.4)
 function drawSummaryBlock(doc, y, summaries, totals) {
   const x = margin;
   const w = contentWidth;
-  const rows = {
-    amount: 10,
-    label: 7,
-    purity: 8,
-    value: 8,
-  };
+  const rows = { amount: 10, label: 7, purity: 8, value: 8 };
   const totalHeight = rows.amount + rows.label + rows.purity + rows.value + rows.label + rows.purity + rows.value;
   const amountLabelW = 42;
   const roundLabelW = 28;
@@ -86,7 +71,6 @@ function drawSummaryBlock(doc, y, summaries, totals) {
   doc.setLineWidth(0.18);
   doc.rect(x, y, w, totalHeight);
   lineYs.slice(1, -1).forEach((lineY) => doc.line(x, lineY, x + w, lineY));
-
   doc.line(x + amountLabelW, y, x + amountLabelW, y + rows.amount);
   doc.line(x + amountLabelW + wordsW, y, x + amountLabelW + wordsW, y + rows.amount);
   doc.line(x + amountLabelW + wordsW + roundLabelW, y, x + amountLabelW + wordsW + roundLabelW, y + rows.amount);
@@ -119,7 +103,6 @@ function drawSummaryBlock(doc, y, summaries, totals) {
     drawCenteredCellText(doc, `${purityText(summary.purity)} Ct`, cellX, netPurityY, summaryW, rows.purity, 'normal', 8.2);
     drawCenteredCellText(doc, `${formatWeight(summary.netWeight)} gm`, cellX, netValueY, summaryW, rows.value, 'normal', 8.2);
   });
-
   return y + totalHeight;
 }
 
@@ -161,8 +144,8 @@ export async function generateCertificatePdf(data, options = {}) {
 
   const headerImage = createShopHeaderImage(shop);
   doc.addImage(headerImage, 'PNG', 63, 6, 84, 24.3);
-
   doc.text(`Date :- ${dateText(form.date) || '------------------------'}`, pageWidth - margin - 36, 17);
+
   const qrX = pageWidth - margin - 20;
   const qrY = 20;
   const qrSize = 24;
@@ -199,19 +182,17 @@ export async function generateCertificatePdf(data, options = {}) {
   const declarationOne = `I hereby certify that Sri/Smt. ${safeText(form.borrowerName)} S/W/D of ${safeText(form.fatherName)} Resident of ${safeText(form.borrowerAddress)} who has sought gold loan from the bank is not my relative and the gold against which the loan is sought is not purchased from me. The ornaments/coins have been weighted and appraised by me on ${dateText(form.appraisalDate)} in the presence of Sri/Smt. ${safeText(form.cashInCharge)} (Cash in charge) and the exact weight, purity and market value are indicated below:`;
   y = drawWrapped(doc, declarationOne, margin, y, contentWidth, 4.2) + 3;
 
-  const head = [
-    [
-      'Sl No.',
-      'Description of the Article',
-      'No. of Article\n(units)',
-      'Approximate weight of the precious stones in the ornaments\n(Grams)',
-      'Gross Weight\n(Gram)',
-      'Net Weight\n(Gram)',
-      'Purity\n(Carat)',
-      ...customColumns.map((column) => column.label),
-      'Market Value\n(Rs.)',
-    ],
-  ];
+  const head = [[
+    'Sl No.',
+    'Description of the Article',
+    'No. of Article\n(units)',
+    'Approximate weight of the precious stones in the ornaments\n(Grams)',
+    'Gross Weight\n(Gram)',
+    'Net Weight\n(Gram)',
+    'Purity\n(Carat)',
+    ...customColumns.map((column) => column.label),
+    'Market Value\n(Rs.)',
+  ]];
 
   const body = rows.map((row, index) => [
     index + 1,
@@ -282,26 +263,19 @@ export async function generateCertificatePdf(data, options = {}) {
     },
     columnStyles,
     didParseCell: (hookData) => {
-      if (hookData.row.index === body.length - 1) {
-        hookData.cell.styles.fontStyle = 'bold';
-      }
+      if (hookData.row.index === body.length - 1) hookData.cell.styles.fontStyle = 'bold';
     },
   });
 
   y = drawSummaryBlock(doc, doc.lastAutoTable.finalY + 4, summaries, totals) + 6;
 
-  drawLineLabel(doc, 'Method used for purity testing:', safeText(form.testingMethod), margin, y, 48, 58);
-  y += 8;
-
-  const declarationTwo =
-    'I solemnly declare that weight, purity of the gold ornaments/precious stones indicated above are correct and I undertake to indemnify the Bank against any loss it may sustain on account of any inaccuracy in the above appraisal.';
+  const declarationTwo = 'I solemnly declare that weight, purity of the gold ornaments/precious stones indicated above are correct and I undertake to indemnify the Bank against any loss it may sustain on account of any inaccuracy in the above appraisal.';
   y = drawWrapped(doc, declarationTwo, margin, y, contentWidth, 4.2) + 6;
 
   const bottomY = Math.max(y + 8, 264);
   setFont(doc, 'normal', 12);
   doc.text(`Place: ${safeText(form.place)}`, margin + 2, bottomY);
   doc.text(`Date: ${dateText(form.signatureDate)}`, margin + 2, bottomY + 7);
-
   setFont(doc, 'normal', 12);
   doc.text('Yours faithfully', pageWidth - margin - 2, bottomY, { align: 'right' });
   setFont(doc, 'bold', 11.5);
@@ -315,10 +289,6 @@ export async function generateCertificatePdf(data, options = {}) {
   const filenameDate = safeText(form.date) || new Date().toISOString().slice(0, 10);
   const filename = `AppraiserCertificate_${filenameName}_${filenameDate}.pdf`;
   const blob = doc.output('blob');
-
-  if (save) {
-    doc.save(filename);
-  }
-
+  if (save) doc.save(filename);
   return { blob, filename };
 }
