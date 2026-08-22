@@ -17,6 +17,10 @@ services:
         sync: false
       - key: CLOUDINARY_URL
         sync: false
+      - key: IBJA_RATES_API_URL
+        sync: false
+      - key: IBJA_RATES_API_KEY
+        sync: false
 
   - type: pg
     name: kanhaiya-gold-db
