@@ -461,10 +461,16 @@ function MobileDashboard() {
             </MobileCard>
 
             <MobileCard title="Gold Item Photo & Shop">
-              <label className="flex min-h-24 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 text-center">
-                <input type="file" className="hidden" accept="image/*" capture="environment" onChange={(event) => uploadImage(event.target.files?.[0])} />
-                <span className="text-sm font-bold text-slate-600">{shop.itemImageUrl ? 'Replace gold item photo' : 'Tap to take / choose gold item photo'}</span>
-              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex min-h-24 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 text-center transition active:scale-[0.99]">
+                  <input type="file" className="hidden" accept="image/*" capture="environment" onChange={(event) => uploadImage(event.target.files?.[0])} />
+                  <span className="text-sm font-bold text-slate-600">📷 Take Photo</span>
+                </label>
+                <label className="flex min-h-24 cursor-pointer items-center justify-center rounded-2xl border-2 border-slate-200 bg-white px-3 text-center shadow-sm transition active:scale-[0.99]">
+                  <input type="file" className="hidden" accept="image/*" onChange={(event) => uploadImage(event.target.files?.[0])} />
+                  <span className="text-sm font-bold text-slate-600">🖼️ Choose from Gallery</span>
+                </label>
+              </div>
               {shop.itemImageUrl && <div className="mt-3 flex items-center gap-3"><img src={shop.itemImageUrl} alt="Gold item" className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200" /><div><p className="text-sm font-bold text-slate-900">Photo uploaded</p><p className="text-xs text-slate-500">QR is ready for the certificate.</p></div></div>}
               <div className="mt-4 grid gap-3">
                 <Field label="Shop Name" value={shop.nameHindi} onChange={(v) => setShop((current) => ({ ...current, nameHindi: v }))} />
