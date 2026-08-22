@@ -5,6 +5,18 @@ import { API_BASE } from '../utils/config';
 const SOURCE_URL = 'https://www.ibjarates.com/';
 const ORDER = ['24 Ct', '22 Ct', '20 Ct', '18 Ct', '14 Ct'];
 
+function formatRateDate(value) {
+  if (!value) return 'Date unavailable';
+  const [day, month, year] = String(value).split('/');
+  if (!day || !month || !year) return value;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 function MarketRatesPage() {
   const [rates, setRates] = useState(null);
   const [meta, setMeta] = useState(null);
@@ -68,6 +80,13 @@ function MarketRatesPage() {
             </div>
             {meta?.rateType && <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">{meta.rateType}</span>}
           </div>
+
+          {meta?.rateDate && (
+            <div className="mb-4 flex flex-col gap-1 rounded-2xl bg-indigo-50 px-4 py-3 text-sm text-indigo-950 sm:flex-row sm:items-center sm:justify-between">
+              <p><span className="font-extrabold">Rate date:</span> {formatRateDate(meta.rateDate)}</p>
+              <p className="text-xs font-semibold text-indigo-700">{meta.rateType?.includes('latest published business day') ? 'Latest published business day' : 'Published rate date'}</p>
+            </div>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-5">
             {ORDER.map((purity) => (
