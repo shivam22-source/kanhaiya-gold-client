@@ -17,13 +17,17 @@ import { API_BASE } from '../utils/config';
 const storageKey = 'sbi-gold-appraiser-shop-settings';
 const marketRateStorageKey = 'sbi-gold-appraiser-market-rates';
 
-const sampleRows = [
-  { description: 'Locket/Tops/Ring', units: 9, stoneWeight: 1.65, grossWeight: 14.99, netWeight: 13.34, purity: '18 Ct' },
-  { description: 'Ring/Bale/Nosering with Lare', units: 7, stoneWeight: 3.44, grossWeight: 29.44, netWeight: 26, purity: '18 Ct' },
-  { description: 'Earings/Tika', units: 5, stoneWeight: 2.4, grossWeight: 41.4, netWeight: 39, purity: '20 Ct' },
-  { description: 'Chain/Nosering/Tika', units: 3, stoneWeight: 2.8, grossWeight: 47.2, netWeight: 44.4, purity: '20 Ct' },
-  { description: 'Asharfi/Ring', units: 3, stoneWeight: 1.5, grossWeight: 17, netWeight: 15.5, purity: '20 Ct' },
-].map((row, index) => ({ id: crypto.randomUUID(), customValues: {}, marketManual: false, ...row, sl: index + 1 }));
+const freshRow = () => ({
+  id: crypto.randomUUID(),
+  description: '',
+  units: 1,
+  stoneWeight: 0,
+  grossWeight: 0,
+  netWeight: 0,
+  purity: '22 Ct',
+  customValues: {},
+  marketManual: false,
+});
 
 const defaultShop = {
   nameHindi: 'कन्हैया ज्वेलर्स',
@@ -36,20 +40,22 @@ const defaultShop = {
   footerCredit: 'Design & Developed by Jatin Mishra',
 };
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 const defaultForm = {
   refNo: '',
-  appraisalCharge: 4720,
-  date: '2026-08-20',
-  bankAccount: '34481639897',
-  branchName: 'Darbhanga City',
-  borrowerName: 'Ashutosh Kumar Jha',
-  fatherName: 'Navin Kumar Jha',
-  borrowerAddress: 'Darbhanga',
-  appraisalDate: '2026-08-20',
-  cashInCharge: 'Ruby Choudhary',
-  testingMethod: 'Touchstone test',
-  place: 'Darbhanga',
-  signatureDate: '2026-08-20',
+  appraisalCharge: 0,
+  date: today(),
+  bankAccount: '',
+  branchName: '',
+  borrowerName: '',
+  fatherName: '',
+  borrowerAddress: '',
+  appraisalDate: today(),
+  cashInCharge: '',
+  testingMethod: '',
+  place: '',
+  signatureDate: today(),
 };
 
 function Field({ label, value, onChange, type = 'text', required = false, className = '', ...props }) {
@@ -121,15 +127,13 @@ function Dashboard() {
     const saved = localStorage.getItem(storageKey);
     if (!saved) return defaultShop;
     const parsed = JSON.parse(saved);
-    return {
-      ...defaultShop,
-      ...parsed,
-      qrText: parsed.qrText || '',
-      qrImage: parsed.qrImage || '',
-      itemImageUrl: parsed.itemImageUrl || '',
-    };
+    const { qrText, qrImage, itemImageUrl, ...savedShop } = parsed;
+    void qrText;
+    void qrImage;
+    void itemImageUrl;
+    return { ...defaultShop, ...savedShop };
   });
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState(() => ({ ...defaultForm, date: today(), appraisalDate: today(), signatureDate: today() }));
   const [rates, setRates] = useState(() => {
     const saved = localStorage.getItem(marketRateStorageKey);
     try {
@@ -139,7 +143,9 @@ function Dashboard() {
       return DEFAULT_RATES;
     }
   });
-  const [rows, setRows] = useState(sampleRows);
+  // The active certificate deliberately stays only in React memory.
+  // Switching apps keeps it alive; a new app/browser session gets these fresh defaults.
+  const [rows, setRows] = useState(() => [freshRow()]);
   const [customColumns, setCustomColumns] = useState([]);
   const [shopOpen, setShopOpen] = useState(true);
   const [error, setError] = useState('');
@@ -151,7 +157,13 @@ function Dashboard() {
   const [marketLoading, setMarketLoading] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(shop));
+    // Persist only shop master configuration. Certificate photo/QR data is intentionally
+    // excluded so a newly opened app starts without the previous certificate's image.
+    const { qrText, qrImage, itemImageUrl, ...persistedShop } = shop;
+    void qrText;
+    void qrImage;
+    void itemImageUrl;
+    localStorage.setItem(storageKey, JSON.stringify(persistedShop));
   }, [shop]);
 
   useEffect(() => {
@@ -159,7 +171,6 @@ function Dashboard() {
     if (!saved) return;
     try {
       const parsed = JSON.parse(saved);
-      setMarketRates(parsed.rates || null);
       setMarketMeta(parsed.meta || null);
     } catch {
       localStorage.removeItem(marketRateStorageKey);
@@ -241,7 +252,7 @@ function Dashboard() {
   }
 
   function addRow() {
-    setRows((current) => [...current, { id: crypto.randomUUID(), description: '', units: 1, stoneWeight: 0, grossWeight: 0, netWeight: 0, purity: '22 Ct', customValues: {}, marketManual: false }]);
+    setRows((current) => [...current, freshRow()]);
   }
 
   function deleteRow(id) {
@@ -257,10 +268,6 @@ function Dashboard() {
   function deleteCustomColumn(columnId) {
     setCustomColumns((current) => current.filter((column) => column.id !== columnId));
     setRows((current) => current.map((row) => { const { [columnId]: removed, ...customValues } = row.customValues || {}; void removed; return { ...row, customValues }; }));
-  }
-
-  function resetMarketValue(id) {
-    setRows((current) => current.map((row) => row.id === id ? { ...row, marketManual: false } : row));
   }
 
   function validate() {
@@ -316,7 +323,12 @@ function Dashboard() {
 
   function loadCertificate(record) {
     const payload = record.payload; if (!payload) return;
-    setShop((current) => ({ ...current, ...(payload.shop || {}) })); setForm((current) => ({ ...current, ...(payload.form || {}) })); setRates((current) => ({ ...current, ...(payload.rates || {}) })); setRows((payload.rows || sampleRows).map((row) => ({ ...row, id: row.id || crypto.randomUUID() }))); setCustomColumns(payload.customColumns || []); setSaveStatus(`Loaded: ${record.borrowerName}`);
+    setShop((current) => ({ ...current, ...(payload.shop || {}) }));
+    setForm((current) => ({ ...current, ...(payload.form || {}) }));
+    setRates((current) => ({ ...current, ...(payload.rates || {}) }));
+    setRows((payload.rows || [freshRow()]).map((row) => ({ ...row, id: row.id || crypto.randomUUID() })));
+    setCustomColumns(payload.customColumns || []);
+    setSaveStatus(`Loaded: ${record.borrowerName}`);
   }
 
   async function downloadRecordPdf(record) {
