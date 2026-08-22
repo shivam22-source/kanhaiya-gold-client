@@ -22,6 +22,18 @@ function Card({ title, children }) {
   );
 }
 
+function MobileBottomNav() {
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl md:hidden">
+      <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
+        <Link to="/" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">New</Link>
+        <Link to="/records" className="rounded-2xl bg-indigo-50 py-2 text-center text-xs font-bold text-indigo-700">Records</Link>
+        <Link to="/market-rates" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">Market</Link>
+      </div>
+    </nav>
+  );
+}
+
 function RecordDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -67,7 +79,7 @@ function RecordDetailPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 pb-20">
         <p className="text-sm text-slate-500">Loading record...</p>
       </main>
     );
@@ -75,11 +87,12 @@ function RecordDetailPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 pb-20">
         <p className="text-sm text-red-600">{error}</p>
         <Link className="text-sm font-semibold text-indigo-600" to="/records">
           Back to Records
         </Link>
+        <MobileBottomNav />
       </main>
     );
   }
@@ -88,7 +101,7 @@ function RecordDetailPage() {
   const { shop = {}, form = {}, rows = [], customColumns = [], totals = {}, summaries = [], amountWords = '' } = payload;
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-800">
+    <main className="min-h-screen bg-slate-50 pb-24 text-slate-800">
       <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-[1300px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -159,9 +172,7 @@ function RecordDetailPage() {
                   <th className="border border-slate-200 p-2">Net Wt</th>
                   <th className="border border-slate-200 p-2">Purity</th>
                   {customColumns.map((column) => (
-                    <th key={column.id} className="border border-slate-200 p-2">
-                      {column.label}
-                    </th>
+                    <th key={column.id} className="border border-slate-200 p-2">{column.label}</th>
                   ))}
                   <th className="border border-slate-200 p-2">Market Value</th>
                 </tr>
@@ -177,9 +188,7 @@ function RecordDetailPage() {
                     <td className="border border-slate-200 p-2 text-right">{formatWeight(row.netWeight)}</td>
                     <td className="border border-slate-200 p-2 text-center">{row.purity}</td>
                     {customColumns.map((column) => (
-                      <td key={column.id} className="border border-slate-200 p-2">
-                        {row.customValues?.[column.id] || ''}
-                      </td>
+                      <td key={column.id} className="border border-slate-200 p-2">{row.customValues?.[column.id] || ''}</td>
                     ))}
                     <td className="border border-slate-200 p-2 text-right">{formatMoney(row.marketValue)}</td>
                   </tr>
@@ -194,9 +203,7 @@ function RecordDetailPage() {
                   <td className="border border-slate-200 p-2 text-right">{formatWeight(totals.grossWeight)}</td>
                   <td className="border border-slate-200 p-2 text-right">{formatWeight(totals.netWeight)}</td>
                   <td className="border border-slate-200 p-2"></td>
-                  {customColumns.map((column) => (
-                    <td key={column.id} className="border border-slate-200 p-2"></td>
-                  ))}
+                  {customColumns.map((column) => <td key={column.id} className="border border-slate-200 p-2"></td>)}
                   <td className="border border-slate-200 p-2 text-right">{formatMoney(totals.marketValue)}</td>
                 </tr>
               </tfoot>
@@ -232,6 +239,8 @@ function RecordDetailPage() {
           </Card>
         </div>
       </div>
+
+      <MobileBottomNav />
     </main>
   );
 }
