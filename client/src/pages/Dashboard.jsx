@@ -37,7 +37,7 @@ const defaultShop = {
   qrImage: '',
   itemImageUrl: '',
   appraiserAccount: '43647158156',
-  footerCredit: 'Design & Developed by Jatin Mishra',
+  footerCredit: 'Design & Developed by Shivam Thakur',
 };
 
 const indiaToday = () => {
@@ -136,14 +136,16 @@ function Dashboard() {
     const saved = localStorage.getItem(storageKey);
     if (!saved) return defaultShop;
     const parsed = JSON.parse(saved);
-    const { qrText, qrImage, itemImageUrl, ...savedShop } = parsed;
-    void qrText;
-    void qrImage;
-    void itemImageUrl;
-    return { ...defaultShop, ...savedShop };
+    return {
+      ...defaultShop,
+      ...parsed,
+      footerCredit: defaultShop.footerCredit,
+      qrText: parsed.qrText || '',
+      qrImage: parsed.qrImage || '',
+      itemImageUrl: parsed.itemImageUrl || '',
+    };
   });
-  const currentIndiaDate = indiaToday();
-  const [form, setForm] = useState(() => ({ ...defaultForm, date: currentIndiaDate, appraisalDate: currentIndiaDate, signatureDate: currentIndiaDate }));
+  const [form, setForm] = useState(() => ({ ...defaultForm, date: indiaToday(), appraisalDate: indiaToday(), signatureDate: indiaToday() }));
   const [rates, setRates] = useState(() => {
     const saved = localStorage.getItem(marketRateStorageKey);
     try {
@@ -153,9 +155,7 @@ function Dashboard() {
       return DEFAULT_RATES;
     }
   });
-  // The active certificate deliberately stays only in React memory.
-  // Switching apps keeps it alive; a new app/browser session gets these fresh defaults.
-  const [rows, setRows] = useState(() => [freshRow()]);
+  const [rows, setRows] = useState([freshRow()]);
   const [customColumns, setCustomColumns] = useState([]);
   const [shopOpen, setShopOpen] = useState(true);
   const [error, setError] = useState('');
@@ -167,13 +167,7 @@ function Dashboard() {
   const [marketLoading, setMarketLoading] = useState(false);
 
   useEffect(() => {
-    // Persist only shop master configuration. Certificate photo/QR data is intentionally
-    // excluded so a newly opened app starts without the previous certificate's image.
-    const { qrText, qrImage, itemImageUrl, ...persistedShop } = shop;
-    void qrText;
-    void qrImage;
-    void itemImageUrl;
-    localStorage.setItem(storageKey, JSON.stringify(persistedShop));
+    localStorage.setItem(storageKey, JSON.stringify(shop));
   }, [shop]);
 
   useEffect(() => {
@@ -181,6 +175,7 @@ function Dashboard() {
     if (!saved) return;
     try {
       const parsed = JSON.parse(saved);
+      setMarketRates(parsed.rates || null);
       setMarketMeta(parsed.meta || null);
     } catch {
       localStorage.removeItem(marketRateStorageKey);
@@ -217,7 +212,8 @@ function Dashboard() {
   }
 
   function updateShop(key, value) {
-    setShop((current) => ({ ...current, [key]: value }));
+    if (key === 'footerCredit') return;
+    setShop((current) => ({ ...current, [key]: value, footerCredit: defaultShop.footerCredit }));
   }
 
   async function handleGoldItemUpload(file) {
@@ -235,7 +231,7 @@ function Dashboard() {
       }
       const result = await response.json();
       const qrImage = await QRCode.toDataURL(result.imageUrl, { errorCorrectionLevel: 'M', margin: 1, width: 360, color: { dark: '#000000', light: '#ffffff' } });
-      setShop((current) => ({ ...current, itemImageUrl: result.imageUrl, qrText: result.imageUrl, qrImage }));
+      setShop((current) => ({ ...current, itemImageUrl: result.imageUrl, qrText: result.imageUrl, qrImage, footerCredit: defaultShop.footerCredit }));
       setSaveStatus('Item photo uploaded and QR generated');
     } catch (uploadError) {
       setSaveStatus(`Upload failed: ${uploadError.message}`);
@@ -280,6 +276,10 @@ function Dashboard() {
     setRows((current) => current.map((row) => { const { [columnId]: removed, ...customValues } = row.customValues || {}; void removed; return { ...row, customValues }; }));
   }
 
+  function resetMarketValue(id) {
+    setRows((current) => current.map((row) => row.id === id ? { ...row, marketManual: false } : row));
+  }
+
   function validate() {
     const required = [['Date', form.date], ['Bank A/c No.', form.bankAccount], ['Branch Name', form.branchName], ['Borrower Name', form.borrowerName], ["Father/Husband's Name", form.fatherName], ['Resident', form.borrowerAddress], ['Cash in charge', form.cashInCharge], ['Testing Method', form.testingMethod], ['Place', form.place]];
     const missing = required.filter(([, value]) => !String(value || '').trim()).map(([label]) => label);
@@ -306,7 +306,7 @@ function Dashboard() {
     const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url); setSaveStatus('Sharing is not supported here, PDF downloaded instead');
   }
 
-  function certificatePayload() { return { shop, form, rates, rows: calculatedRows, customColumns, totals, summaries, amountWords }; }
+  function certificatePayload() { return { shop: { ...shop, footerCredit: defaultShop.footerCredit }, form, rates, rows: calculatedRows, customColumns, totals, summaries, amountWords }; }
 
   async function saveCertificate(options = {}) {
     if (!validate()) return null;
@@ -333,17 +333,12 @@ function Dashboard() {
 
   function loadCertificate(record) {
     const payload = record.payload; if (!payload) return;
-    setShop((current) => ({ ...current, ...(payload.shop || {}) }));
-    setForm((current) => ({ ...current, ...(payload.form || {}) }));
-    setRates((current) => ({ ...current, ...(payload.rates || {}) }));
-    setRows((payload.rows || [freshRow()]).map((row) => ({ ...row, id: row.id || crypto.randomUUID() })));
-    setCustomColumns(payload.customColumns || []);
-    setSaveStatus(`Loaded: ${record.borrowerName}`);
+    setShop((current) => ({ ...current, ...(payload.shop || {}), footerCredit: defaultShop.footerCredit })); setForm((current) => ({ ...current, ...(payload.form || {}) })); setRates((current) => ({ ...current, ...(payload.rates || {}) })); setRows((payload.rows || [freshRow()]).map((row) => ({ ...row, id: row.id || crypto.randomUUID() }))); setCustomColumns(payload.customColumns || []); setSaveStatus(`Loaded: ${record.borrowerName}`);
   }
 
   async function downloadRecordPdf(record) {
     const payload = record.payload; if (!payload) return;
-    await generateCertificatePdf({ shop: payload.shop, form: payload.form, rows: payload.rows, customColumns: payload.customColumns || [], totals: payload.totals, summaries: payload.summaries });
+    await generateCertificatePdf({ shop: { ...payload.shop, footerCredit: defaultShop.footerCredit }, form: payload.form, rows: payload.rows, customColumns: payload.customColumns || [], totals: payload.totals, summaries: payload.summaries });
   }
 
   return (
@@ -369,7 +364,7 @@ function Dashboard() {
               <Field label="Appraiser Bank A/c No." value={shop.appraiserAccount} onChange={(value) => updateShop('appraiserAccount', value)} />
               <label className="block md:col-span-2"><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Upload Gold Items Photo</span><input className="block h-10 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800" type="file" accept="image/*" onChange={(event) => handleGoldItemUpload(event.target.files?.[0])}/></label>
               <div className="flex items-end"><div className="flex h-20 w-20 items-center justify-center border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">{shop.qrImage ? <img className="h-full w-full object-contain" src={shop.qrImage} alt="QR preview" /> : 'QR'}</div></div>
-              <Field label="Footer Credit" value={shop.footerCredit} onChange={(value) => updateShop('footerCredit', value)} className="md:col-span-2 xl:col-span-4" />
+              <Field label="Footer Credit" value={defaultShop.footerCredit} onChange={() => {}} className="md:col-span-2 xl:col-span-4" readOnly />
             </div>}
           </Section>
 
