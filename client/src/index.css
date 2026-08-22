@@ -41,6 +41,21 @@ textarea {
   font: inherit;
 }
 
+/* Shop master fields are fixed configuration on both desktop and mobile.
+   Keep the photo file chooser usable, but prevent edits to the other fields
+   inside the Shop Details card. */
+main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:not([type="file"]) {
+  pointer-events: none !important;
+  touch-action: none !important;
+  -webkit-user-modify: read-only !important;
+  user-modify: read-only !important;
+  caret-color: transparent !important;
+  user-select: none !important;
+  cursor: not-allowed !important;
+  background: #f8fafc;
+  color: #334155;
+}
+
 @media (max-width: 767px) {
   body {
     background: #f6f7fb;
@@ -95,19 +110,5 @@ textarea {
 
   nav.fixed.bottom-0.left-0.right-0.z-40 {
     padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
-  }
-
-  /* Shop master fields are fixed configuration on the phone app. The card that contains
-     the gold-photo picker is the Shop Details card; lock only its text inputs. */
-  main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:not([type="file"]) {
-    pointer-events: none !important;
-    touch-action: none !important;
-    -webkit-user-modify: read-only !important;
-    user-modify: read-only !important;
-    caret-color: transparent !important;
-    user-select: none !important;
-    cursor: not-allowed !important;
-    background: #f8fafc;
-    color: #334155;
   }
 }
