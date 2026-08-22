@@ -57,18 +57,20 @@ textarea {
     padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
   }
 
-  /* Make Save / Generate PDF / Share evenly sized and touch friendly. */
+  /* Use a 3-column grid so all actions are exactly the same width. */
   div.fixed.bottom-16.left-0.right-0.z-30 > div {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.5rem;
     padding: 0.5rem;
   }
 
   div.fixed.bottom-16.left-0.right-0.z-30 > div > button {
-    flex: 1 1 0% !important;
+    width: 100% !important;
     min-width: 0;
     height: 3rem;
-    padding-left: 0.65rem;
-    padding-right: 0.65rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
     white-space: nowrap;
   }
 
