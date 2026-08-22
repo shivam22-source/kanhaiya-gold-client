@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
@@ -110,7 +110,6 @@ function MobileDashboard() {
   const [marketRates, setMarketRates] = useState(null);
   const [marketMeta, setMarketMeta] = useState(null);
   const [marketLoading, setMarketLoading] = useState(false);
-  const appUrlRef = useRef(window.location.href);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(shop));
@@ -129,21 +128,37 @@ function MobileDashboard() {
     }
   }, []);
 
-  // Native-app style Back behavior inside the certificate flow.
-  // Items -> Details, Review -> Items, while Details -> actual browser/app exit.
+  // Keep an explicit history stack for the three certificate steps.
+  // Browser/Android Back now behaves like native app navigation:
+  // Review -> Items -> Details -> leave the app.
   useEffect(() => {
-    window.history.replaceState({ kanhaiyaApp: true }, '', appUrlRef.current);
+    const currentState = window.history.state;
+    if (!currentState?.kanhaiyaApp || currentState.screen !== 'certificate-step') {
+      window.history.replaceState({ kanhaiyaApp: true, screen: 'certificate-step', step: 0 }, '', window.location.href);
+    }
 
-    const handlePopState = () => {
-      if (step > 0) {
-        window.history.pushState({ kanhaiyaApp: true }, '', appUrlRef.current);
-        setStep((current) => Math.max(0, current - 1));
+    const handlePopState = (event) => {
+      if (event.state?.kanhaiyaApp && event.state.screen === 'certificate-step') {
+        setStep(Math.max(0, Math.min(2, Number(event.state.step) || 0)));
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [step]);
+  }, []);
+
+  function goToStep(nextStep, { push = true } = {}) {
+    const normalized = Math.max(0, Math.min(2, Number(nextStep)));
+    if (normalized === step) return;
+    if (push) {
+      window.history.pushState(
+        { kanhaiyaApp: true, screen: 'certificate-step', step: normalized },
+        '',
+        window.location.href,
+      );
+    }
+    setStep(normalized);
+  }
 
   const calculatedRows = useMemo(() => calculateRows(rows, rates), [rows, rates]);
   const totals = useMemo(() => calculateTotals(calculatedRows), [calculatedRows]);
@@ -195,7 +210,7 @@ function MobileDashboard() {
 
   function addRow() {
     setRows((current) => [...current, freshRow()]);
-    setStep(1);
+    goToStep(1);
   }
 
   function deleteRow(id) {
@@ -231,7 +246,7 @@ function MobileDashboard() {
     }
     if (calculatedRows.some((row) => !String(row.description || '').trim() || !row.purity)) {
       setError('Please complete every gold item description and purity.');
-      setStep(1);
+      goToStep(1, { push: false });
       return false;
     }
     setError('');
@@ -330,7 +345,7 @@ function MobileDashboard() {
 
         <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200">
           {['Details', 'Gold Items', 'Review'].map((label, index) => (
-            <button key={label} onClick={() => setStep(index)} className={`rounded-xl px-2 py-2.5 text-xs font-bold transition ${step === index ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
+            <button key={label} onClick={() => goToStep(index)} className={`rounded-xl px-2 py-2.5 text-xs font-bold transition ${step === index ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
               {index + 1}. {label}
             </button>
           ))}
@@ -400,7 +415,7 @@ function MobileDashboard() {
               </div>
             </MobileCard>
 
-            <button onClick={() => setStep(1)} className="flex h-12 w-full items-center justify-center rounded-2xl bg-indigo-600 text-sm font-bold text-white shadow-lg shadow-indigo-600/20">Continue to Gold Items →</button>
+            <button onClick={() => goToStep(1)} className="flex h-12 w-full items-center justify-center rounded-2xl bg-indigo-600 text-sm font-bold text-white shadow-lg shadow-indigo-600/20">Continue to Gold Items →</button>
           </div>
         )}
 
@@ -448,7 +463,7 @@ function MobileDashboard() {
               </div>
               <div className="mt-4 flex gap-2">
                 <button onClick={addCustomColumn} className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-700">+ Custom field</button>
-                <button onClick={() => setStep(2)} className="flex-[1.5] rounded-2xl bg-indigo-600 px-4 py-3 text-xs font-bold text-white">Review valuation →</button>
+                <button onClick={() => goToStep(2)} className="flex-[1.5] rounded-2xl bg-indigo-600 px-4 py-3 text-xs font-bold text-white">Review valuation →</button>
               </div>
             </MobileCard>
           </div>
@@ -519,8 +534,8 @@ function MobileDashboard() {
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl">
         <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
-          <button onClick={() => setStep(0)} className={`rounded-2xl py-2 text-xs font-bold ${step === 0 ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500'}`}>New</button>
-          <button onClick={() => setStep(1)} className={`rounded-2xl py-2 text-xs font-bold ${step === 1 ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500'}`}>Items</button>
+          <button onClick={() => goToStep(0)} className={`rounded-2xl py-2 text-xs font-bold ${step === 0 ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500'}`}>New</button>
+          <button onClick={() => goToStep(1)} className={`rounded-2xl py-2 text-xs font-bold ${step === 1 ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500'}`}>Items</button>
           <Link to="/records" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">Records</Link>
         </div>
       </nav>
