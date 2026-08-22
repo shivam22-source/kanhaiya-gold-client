@@ -11,12 +11,44 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 input,
 select,
 textarea {
   font: inherit;
+}
+
+@media (max-width: 767px) {
+  body {
+    background: #f6f7fb;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
