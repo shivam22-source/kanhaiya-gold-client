@@ -95,7 +95,14 @@ function MobileDashboard() {
     const saved = localStorage.getItem(storageKey);
     if (!saved) return defaultShop;
     try {
-      return { ...defaultShop, ...JSON.parse(saved), footerCredit: defaultShop.footerCredit };
+      return {
+        ...defaultShop,
+        ...JSON.parse(saved),
+        footerCredit: defaultShop.footerCredit,
+        itemImageUrl: '',
+        qrText: '',
+        qrImage: '',
+      };
     } catch {
       return defaultShop;
     }
@@ -155,6 +162,19 @@ function MobileDashboard() {
       );
     }
     setStep(normalized);
+  }
+
+  function startNewCertificate() {
+    const today = indiaToday();
+    setForm({ ...defaultForm, date: today, appraisalDate: today, signatureDate: today });
+    setRows([freshRow()]);
+    setCustomColumns([]);
+    setShop((current) => ({ ...current, itemImageUrl: '', qrText: '', qrImage: '' }));
+    setMarketApplied(false);
+    setError('');
+    setStatus('');
+    setPhotoUploading(false);
+    goToStep(0);
   }
 
   const calculatedRows = useMemo(() => calculateRows(rows, rates), [rows, rates]);
@@ -534,7 +554,7 @@ function MobileDashboard() {
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl">
         <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
-          <button onClick={() => goToStep(0)} className={`rounded-2xl py-2 text-xs font-bold ${step === 0 ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500'}`}>New</button>
+          <button onClick={startNewCertificate} className={`rounded-2xl py-2 text-xs font-bold ${step === 0 ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500'}`}>New</button>
           <button onClick={() => goToStep(1)} className={`rounded-2xl py-2 text-xs font-bold ${step === 1 ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500'}`}>Items</button>
           <Link to="/records" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">Records</Link>
         </div>
