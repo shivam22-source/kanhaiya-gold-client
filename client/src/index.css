@@ -100,9 +100,13 @@ textarea {
   /* Shop master fields are fixed configuration on the phone app. The card that contains
      the gold-photo picker is the Shop Details card; lock only its text inputs. */
   main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:not([type="file"]) {
-    pointer-events: none;
-    caret-color: transparent;
-    user-select: none;
+    pointer-events: none !important;
+    touch-action: none !important;
+    -webkit-user-modify: read-only !important;
+    user-modify: read-only !important;
+    caret-color: transparent !important;
+    user-select: none !important;
+    cursor: not-allowed !important;
     background: #f8fafc;
     color: #334155;
   }
