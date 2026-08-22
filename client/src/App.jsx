@@ -6,6 +6,7 @@ import MarketRatesPage from './pages/MarketRatesPage';
 import RecordsPage from './pages/RecordsPage';
 import MobileRecordsPage from './pages/MobileRecordsPage';
 import RecordDetailPage from './pages/RecordDetailPage';
+import InstallPrompt from './components/InstallPrompt';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -31,12 +32,15 @@ function ResponsiveRecords() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<ResponsiveDashboard />} />
-      <Route path="/market-rates" element={<MarketRatesPage />} />
-      <Route path="/records" element={<ResponsiveRecords />} />
-      <Route path="/records/:id" element={<RecordDetailPage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<ResponsiveDashboard />} />
+        <Route path="/market-rates" element={<MarketRatesPage />} />
+        <Route path="/records" element={<ResponsiveRecords />} />
+        <Route path="/records/:id" element={<RecordDetailPage />} />
+      </Routes>
+      <InstallPrompt />
+    </>
   );
 }
 
