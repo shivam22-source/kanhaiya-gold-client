@@ -40,22 +40,31 @@ const defaultShop = {
   footerCredit: 'Design & Developed by Jatin Mishra',
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const indiaToday = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
 
 const defaultForm = {
   refNo: '',
   appraisalCharge: 0,
-  date: today(),
+  date: '',
   bankAccount: '',
   branchName: '',
   borrowerName: '',
   fatherName: '',
   borrowerAddress: '',
-  appraisalDate: today(),
+  appraisalDate: '',
   cashInCharge: '',
   testingMethod: '',
   place: '',
-  signatureDate: today(),
+  signatureDate: '',
 };
 
 function Field({ label, value, onChange, type = 'text', required = false, className = '', ...props }) {
@@ -133,7 +142,8 @@ function Dashboard() {
     void itemImageUrl;
     return { ...defaultShop, ...savedShop };
   });
-  const [form, setForm] = useState(() => ({ ...defaultForm, date: today(), appraisalDate: today(), signatureDate: today() }));
+  const currentIndiaDate = indiaToday();
+  const [form, setForm] = useState(() => ({ ...defaultForm, date: currentIndiaDate, appraisalDate: currentIndiaDate, signatureDate: currentIndiaDate }));
   const [rates, setRates] = useState(() => {
     const saved = localStorage.getItem(marketRateStorageKey);
     try {
