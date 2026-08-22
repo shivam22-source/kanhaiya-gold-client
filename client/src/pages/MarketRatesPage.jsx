@@ -5,16 +5,16 @@ import { API_BASE } from '../utils/config';
 const SOURCE_URL = 'https://www.ibjarates.com/';
 const ORDER = ['24 Ct', '22 Ct', '20 Ct', '18 Ct', '14 Ct'];
 
-function formatRateDate(value) {
-  if (!value) return 'Date unavailable';
-  const [day, month, year] = String(value).split('/');
-  if (!day || !month || !year) return value;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  return date.toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+function MobileBottomNav() {
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl md:hidden">
+      <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
+        <Link to="/" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">New</Link>
+        <Link to="/records" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">Records</Link>
+        <span className="rounded-2xl bg-indigo-50 py-2 text-center text-xs font-bold text-indigo-700">Market</span>
+      </div>
+    </nav>
+  );
 }
 
 function MarketRatesPage() {
@@ -43,14 +43,14 @@ function MarketRatesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f7fb] text-slate-900">
+    <main className="min-h-screen bg-[#f6f7fb] pb-24 text-slate-900">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-indigo-600">Kanhaiya Gold</p>
             <h1 className="text-xl font-extrabold tracking-tight">Gold Market Rate</h1>
           </div>
-          <Link to="/" className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white">Back</Link>
+          <Link to="/" className="rounded-2xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700">Back to App</Link>
         </div>
       </header>
 
@@ -81,13 +81,6 @@ function MarketRatesPage() {
             {meta?.rateType && <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">{meta.rateType}</span>}
           </div>
 
-          {meta?.rateDate && (
-            <div className="mb-4 flex flex-col gap-1 rounded-2xl bg-indigo-50 px-4 py-3 text-sm text-indigo-950 sm:flex-row sm:items-center sm:justify-between">
-              <p><span className="font-extrabold">Rate date:</span> {formatRateDate(meta.rateDate)}</p>
-              <p className="text-xs font-semibold text-indigo-700">{meta.rateType?.includes('latest published business day') ? 'Latest published business day' : 'Published rate date'}</p>
-            </div>
-          )}
-
           <div className="grid gap-3 sm:grid-cols-5">
             {ORDER.map((purity) => (
               <div key={purity} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
@@ -98,12 +91,21 @@ function MarketRatesPage() {
             ))}
           </div>
 
+          {meta?.rateDate && (
+            <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 ring-1 ring-slate-200">
+              <p className="font-extrabold">Rate date: {meta.rateDate}</p>
+              <p className="mt-1 text-xs text-slate-500">Latest published business day. This helps when the market is closed on weekends or holidays.</p>
+            </div>
+          )}
+
           <div className="mt-5 flex flex-col gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
             <p><strong>Official source:</strong> IBJA benchmark rate. Verify the published rate before applying it to a certificate.</p>
             <a href={SOURCE_URL} target="_blank" rel="noreferrer" className="shrink-0 font-extrabold text-amber-800 underline">Open IBJA Rates</a>
           </div>
         </section>
       </div>
+
+      <MobileBottomNav />
     </main>
   );
 }
