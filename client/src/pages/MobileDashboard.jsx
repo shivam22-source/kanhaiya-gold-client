@@ -61,7 +61,6 @@ const defaultForm = {
   fatherName: '',
   borrowerAddress: '',
   appraisalDate: '',
-  cashInCharge: '',
   testingMethod: '',
   place: '',
   signatureDate: '',
@@ -207,7 +206,7 @@ function MobileDashboard() {
   }
 
   function validate() {
-    const required = [form.date, form.bankAccount, form.branchName, form.borrowerName, form.fatherName, form.borrowerAddress, form.cashInCharge, form.testingMethod, form.place];
+    const required = [form.date, form.bankAccount, form.branchName, form.borrowerName, form.fatherName, form.borrowerAddress, form.testingMethod, form.place];
     if (required.some((value) => !String(value || '').trim())) {
       setError('Please complete the borrower and bank details.');
       return false;
@@ -343,7 +342,6 @@ function MobileDashboard() {
                   <Field label="Appraisal Charge" type="number" value={form.appraisalCharge} onChange={(v) => updateForm('appraisalCharge', Number(v))} />
                   <Field label="Appraisal Date" type="date" value={form.appraisalDate} onChange={(v) => updateForm('appraisalDate', v)} />
                 </div>
-                <Field label="Cash-in-charge" value={form.cashInCharge} onChange={(v) => updateForm('cashInCharge', v)} />
                 <Field label="Purity Testing Method" value={form.testingMethod} onChange={(v) => updateForm('testingMethod', v)} />
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Place" value={form.place} onChange={(v) => updateForm('place', v)} />
@@ -379,6 +377,7 @@ function MobileDashboard() {
                   </button>
                 </div>
                 {marketMeta?.fetchedAt && <p className="mt-2 text-[10px] text-slate-500">Last synced: {new Date(marketMeta.fetchedAt).toLocaleString('en-IN')} · {marketMeta.derived?.includes('20 Ct') ? '20 Ct derived from fineness' : 'All rates published'}</p>}
+                {marketMeta?.rateDate && <p className="mt-1 text-[10px] font-bold text-slate-600">Rate date: {marketMeta.rateDate} · latest published business day</p>}
                 <a href="https://www.ibjarates.com/" target="_blank" rel="noreferrer" className="mt-2 inline-block text-[10px] font-bold text-indigo-600 underline">Verify on IBJA</a>
               </div>
             </MobileCard>
