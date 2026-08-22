@@ -27,28 +27,58 @@ function setFont(doc, style = 'normal', size = 9.2) {
   doc.setFontSize(size);
 }
 
-function drawWrapped(doc, text, x, y, width, lineHeight = 4.2) {
+function drawWrapped(doc, text, x, y, width, lineHeight = 4.0, size = 9.2) {
+  setFont(doc, 'normal', size);
   const lines = doc.splitTextToSize(text, width);
   doc.text(lines, x, y);
   return y + lines.length * lineHeight;
 }
 
-function drawCenteredCellText(doc, text, x, y, width, height, style = 'normal', size = 8.4) {
+function drawRichWrapped(doc, segments, x, y, width, lineHeight = 4.0, size = 9.2) {
+  let cursorX = x;
+  let cursorY = y;
+  const maxX = x + width;
+
+  segments.forEach(({ text, bold = false }) => {
+    const words = String(text).split(/\s+/).filter(Boolean);
+    words.forEach((word) => {
+      setFont(doc, bold ? 'bold' : 'normal', size);
+      const prefix = cursorX === x ? '' : ' ';
+      const token = `${prefix}${word}`;
+      const tokenWidth = doc.getTextWidth(token);
+
+      if (cursorX !== x && cursorX + tokenWidth > maxX) {
+        cursorY += lineHeight;
+        cursorX = x;
+        setFont(doc, bold ? 'bold' : 'normal', size);
+        doc.text(word, cursorX, cursorY);
+        cursorX += doc.getTextWidth(word);
+      } else {
+        doc.text(token, cursorX, cursorY);
+        cursorX += tokenWidth;
+      }
+    });
+  });
+
+  return cursorY + lineHeight;
+}
+
+function drawCenteredCellText(doc, text, x, y, width, height, style = 'normal', size = 8.2) {
   setFont(doc, style, size);
   const lines = doc.splitTextToSize(String(text), width - 4);
-  const startY = y + height / 2 - ((lines.length - 1) * 3.2) / 2 + 1.1;
+  const startY = y + height / 2 - ((lines.length - 1) * 3.0) / 2 + 1.0;
   doc.text(lines, x + width / 2, startY, { align: 'center' });
 }
 
-function drawLeftCellText(doc, text, x, y, height, style = 'normal', size = 8.4) {
+function drawLeftCellText(doc, text, x, y, height, style = 'normal', size = 8.2) {
   setFont(doc, style, size);
-  doc.text(String(text), x + 2, y + height / 2 + 1.1);
+  doc.text(String(text), x + 2, y + height / 2 + 1.0);
 }
 
 function drawSummaryBlock(doc, y, summaries, totals) {
   const x = margin;
   const w = contentWidth;
-  const rows = { amount: 10, label: 7, purity: 8, value: 8 };
+  const rows = { amount: 8, label: 5, purity: 6, value: 6 };
   const totalHeight = rows.amount + rows.label + rows.purity + rows.value + rows.label + rows.purity + rows.value;
   const amountLabelW = 42;
   const roundLabelW = 28;
@@ -85,23 +115,23 @@ function drawSummaryBlock(doc, y, summaries, totals) {
     doc.line(lineX, netPurityY, lineX, netValueY + rows.value);
   }
 
-  drawLeftCellText(doc, 'Amount (In Words)', x, y, rows.amount, 'bold', 8.2);
-  drawCenteredCellText(doc, numberToWordsIndian(totals.marketValue), x + amountLabelW, y, wordsW, rows.amount, 'normal', 8.2);
-  drawCenteredCellText(doc, 'Round Up', x + amountLabelW + wordsW, y, roundLabelW, rows.amount, 'bold', 8.2);
-  drawCenteredCellText(doc, formatMoney(totals.marketValue), x + amountLabelW + wordsW + roundLabelW, y, amountValueW, rows.amount, 'bold', 8.2);
+  drawLeftCellText(doc, 'Amount (In Words)', x, y, rows.amount, 'bold', 8.0);
+  drawCenteredCellText(doc, numberToWordsIndian(totals.marketValue), x + amountLabelW, y, wordsW, rows.amount, 'normal', 8.0);
+  drawCenteredCellText(doc, 'Round Up', x + amountLabelW + wordsW, y, roundLabelW, rows.amount, 'bold', 8.0);
+  drawCenteredCellText(doc, formatMoney(totals.marketValue), x + amountLabelW + wordsW + roundLabelW, y, amountValueW, rows.amount, 'bold', 8.0);
 
-  drawLeftCellText(doc, 'Gross Weight Carat Summary:', x, lineYs[1], rows.label, 'bold', 8.2);
+  drawLeftCellText(doc, 'Gross Weight Carat Summary:', x, lineYs[1], rows.label, 'bold', 8.0);
   summaries.forEach((summary, index) => {
     const cellX = x + summaryW * index;
-    drawCenteredCellText(doc, `${purityText(summary.purity)} Ct`, cellX, grossPurityY, summaryW, rows.purity, 'normal', 8.2);
-    drawCenteredCellText(doc, `${formatWeight(summary.grossWeight)} gm`, cellX, grossValueY, summaryW, rows.value, 'normal', 8.2);
+    drawCenteredCellText(doc, `${purityText(summary.purity)} Ct`, cellX, grossPurityY, summaryW, rows.purity, 'normal', 8.0);
+    drawCenteredCellText(doc, `${formatWeight(summary.grossWeight)} gm`, cellX, grossValueY, summaryW, rows.value, 'normal', 8.0);
   });
 
-  drawLeftCellText(doc, 'Net weight summary :', x, lineYs[4], rows.label, 'bold', 8.2);
+  drawLeftCellText(doc, 'Net weight summary :', x, lineYs[4], rows.label, 'bold', 8.0);
   summaries.forEach((summary, index) => {
     const cellX = x + summaryW * index;
-    drawCenteredCellText(doc, `${purityText(summary.purity)} Ct`, cellX, netPurityY, summaryW, rows.purity, 'normal', 8.2);
-    drawCenteredCellText(doc, `${formatWeight(summary.netWeight)} gm`, cellX, netValueY, summaryW, rows.value, 'normal', 8.2);
+    drawCenteredCellText(doc, `${purityText(summary.purity)} Ct`, cellX, netPurityY, summaryW, rows.purity, 'normal', 8.0);
+    drawCenteredCellText(doc, `${formatWeight(summary.netWeight)} gm`, cellX, netValueY, summaryW, rows.value, 'normal', 8.0);
   });
   return y + totalHeight;
 }
@@ -167,20 +197,31 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.text('APPRAISER CERTIFICATE', pageWidth / 2, 50, { align: 'center' });
   doc.line(74, 52, 136, 52);
 
-  let y = 60;
-  setFont(doc, 'normal', 9.5);
+  let y = 59;
+  setFont(doc, 'normal', 9.2);
   doc.text('The Branch Manager', margin, y);
-  y += 5;
+  y += 4.5;
   doc.text('State Bank Of India', margin, y);
   doc.text(`A/c No.: ${safeText(form.bankAccount)}`, pageWidth - margin, y, { align: 'right' });
-  y += 5;
+  y += 4.5;
   doc.text(safeText(form.branchName), margin, y);
-  y += 7;
+  y += 6;
   doc.text('Dear Sir,', margin, y);
-  y += 7;
+  y += 5.5;
 
-  const declarationOne = `I hereby certify that Sri/Smt. ${safeText(form.borrowerName)} S/W/D of ${safeText(form.fatherName)} Resident of ${safeText(form.borrowerAddress)} who has sought gold loan from the bank is not my relative and the gold against which the loan is sought is not purchased from me. The ornaments/coins have been weighted and appraised by me on ${dateText(form.appraisalDate)} in the presence of Sri/Smt. ${safeText(form.cashInCharge)} (Cash in charge) and the exact weight, purity and market value are indicated below:`;
-  y = drawWrapped(doc, declarationOne, margin, y, contentWidth, 4.2) + 3;
+  y = drawRichWrapped(doc, [
+    { text: 'I hereby certify that Sri/Smt.' },
+    { text: ` ${safeText(form.borrowerName)}`, bold: true },
+    { text: ' S/W/D of' },
+    { text: ` ${safeText(form.fatherName)}`, bold: true },
+    { text: ' Resident of' },
+    { text: ` ${safeText(form.borrowerAddress)}`, bold: true },
+    { text: ' who has sought gold loan from the bank is not my relative and the gold against which the loan is sought is not purchased from me. The ornaments/coins have been weighted and appraised by me on' },
+    { text: ` ${dateText(form.appraisalDate)}`, bold: true },
+    { text: ' in the presence of Sri/Smt.' },
+    { text: ` ${safeText(form.cashInCharge)}`, bold: true },
+    { text: ' (Cash in charge) and the exact weight, purity and market value are indicated below:' },
+  ], margin, y, contentWidth, 4.0, 9.2) + 1.5;
 
   const head = [[
     'Sl No.',
@@ -246,7 +287,7 @@ export async function generateCertificatePdf(data, options = {}) {
       textColor: 20,
       lineColor: 25,
       lineWidth: 0.12,
-      cellPadding: { top: 1.4, right: 1.2, bottom: 1.4, left: 1.2 },
+      cellPadding: { top: 1.0, right: 1.1, bottom: 1.0, left: 1.1 },
       valign: 'middle',
       overflow: 'linebreak',
     },
@@ -255,11 +296,11 @@ export async function generateCertificatePdf(data, options = {}) {
       textColor: 20,
       fontStyle: 'bold',
       halign: 'center',
-      minCellHeight: 16,
+      minCellHeight: 13,
     },
     bodyStyles: {
       fillColor: [255, 255, 255],
-      minCellHeight: 5.3,
+      minCellHeight: 4.6,
     },
     columnStyles,
     didParseCell: (hookData) => {
@@ -267,22 +308,24 @@ export async function generateCertificatePdf(data, options = {}) {
     },
   });
 
-  y = drawSummaryBlock(doc, doc.lastAutoTable.finalY + 4, summaries, totals) + 6;
+  y = drawSummaryBlock(doc, doc.lastAutoTable.finalY + 3, summaries, totals) + 4;
 
-  const declarationTwo = 'I solemnly declare that weight, purity of the gold ornaments/precious stones indicated above are correct and I undertake to indemnify the Bank against any loss it may sustain on account of any inaccuracy in the above appraisal.';
-  y = drawWrapped(doc, declarationTwo, margin, y, contentWidth, 4.2) + 6;
+  y = drawRichWrapped(doc, [
+    { text: 'Method used for purity testing: ', bold: true },
+    { text: 'I solemnly declare that weight, purity of the gold ornaments/precious stones indicated above are correct and I undertake to indemnify the Bank against any loss it may sustain on account of any inaccuracy in the above appraisal.' },
+  ], margin, y, contentWidth, 4.0, 9.2) + 2;
 
-  const bottomY = Math.max(y + 8, 264);
-  setFont(doc, 'normal', 12);
+  const bottomY = Math.max(y + 6, 252);
+  setFont(doc, 'normal', 11.5);
   doc.text(`Place: ${safeText(form.place)}`, margin + 2, bottomY);
-  doc.text(`Date: ${dateText(form.signatureDate)}`, margin + 2, bottomY + 7);
-  setFont(doc, 'normal', 12);
+  doc.text(`Date: ${dateText(form.signatureDate)}`, margin + 2, bottomY + 6.5);
+  setFont(doc, 'normal', 11.5);
   doc.text('Yours faithfully', pageWidth - margin - 2, bottomY, { align: 'right' });
-  setFont(doc, 'bold', 11.5);
-  doc.text('Name & Signature of the Appraiser', pageWidth - margin - 2, bottomY + 15, { align: 'right' });
-  doc.text('Name & Signature of the Borrower', margin + 2, bottomY + 25);
+  setFont(doc, 'bold', 11.2);
+  doc.text('Name & Signature of the Appraiser', pageWidth - margin - 2, bottomY + 13, { align: 'right' });
+  doc.text('Name & Signature of the Borrower', margin + 2, bottomY + 22);
 
-  setFont(doc, 'normal', 9.5);
+  setFont(doc, 'normal', 9.2);
   doc.text(safeText(shop.footerCredit), pageWidth - margin - 2, pageHeight - 11, { align: 'right' });
 
   const filenameName = safeText(form.borrowerName).replace(/\s+/g, '_') || 'Borrower';
