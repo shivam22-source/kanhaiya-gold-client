@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import MobileDashboard from './pages/MobileDashboard';
+import MarketRatesPage from './pages/MarketRatesPage';
 import RecordsPage from './pages/RecordsPage';
 import MobileRecordsPage from './pages/MobileRecordsPage';
 import RecordDetailPage from './pages/RecordDetailPage';
@@ -32,6 +33,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<ResponsiveDashboard />} />
+      <Route path="/market-rates" element={<MarketRatesPage />} />
       <Route path="/records" element={<ResponsiveRecords />} />
       <Route path="/records/:id" element={<RecordDetailPage />} />
     </Routes>
