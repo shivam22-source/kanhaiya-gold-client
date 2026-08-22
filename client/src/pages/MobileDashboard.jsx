@@ -25,34 +25,47 @@ const defaultShop = {
   qrImage: '',
   itemImageUrl: '',
   appraiserAccount: '43647158156',
-  footerCredit: 'Design & Developed by Jatin Mishra',
+  footerCredit: 'Design & Developed by Shivam Thakur',
+};
+
+const freshRow = () => ({
+  id: crypto.randomUUID(),
+  description: '',
+  units: 1,
+  stoneWeight: 0,
+  grossWeight: 0,
+  netWeight: 0,
+  purity: '22 Ct',
+  customValues: {},
+  marketManual: false,
+});
+
+const indiaToday = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
 };
 
 const defaultForm = {
   refNo: '',
-  appraisalCharge: 4720,
-  date: '2026-08-20',
-  bankAccount: '34481639897',
-  branchName: 'Darbhanga City',
-  borrowerName: 'Ashutosh Kumar Jha',
-  fatherName: 'Navin Kumar Jha',
-  borrowerAddress: 'Darbhanga',
-  appraisalDate: '2026-08-20',
-  cashInCharge: 'Ruby Choudhary',
-  testingMethod: 'Touchstone test',
-  place: 'Darbhanga',
-  signatureDate: '2026-08-20',
+  appraisalCharge: 0,
+  date: '',
+  bankAccount: '',
+  branchName: '',
+  borrowerName: '',
+  fatherName: '',
+  borrowerAddress: '',
+  appraisalDate: '',
+  cashInCharge: '',
+  testingMethod: '',
+  place: '',
+  signatureDate: '',
 };
-
-const starterRows = [
-  { description: 'Locket/Tops/Ring', units: 9, stoneWeight: 1.65, grossWeight: 14.99, netWeight: 13.34, purity: '18 Ct' },
-  { description: 'Ring/Bale/Nosering with Lare', units: 7, stoneWeight: 3.44, grossWeight: 29.44, netWeight: 26, purity: '18 Ct' },
-].map((row) => ({
-  ...row,
-  id: crypto.randomUUID(),
-  customValues: {},
-  marketManual: false,
-}));
 
 function Field({ label, value, onChange, type = 'text', inputMode, placeholder }) {
   return (
@@ -62,6 +75,7 @@ function Field({ label, value, onChange, type = 'text', inputMode, placeholder }
         className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-[15px] text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
         type={type}
         inputMode={inputMode}
+        autoComplete="off"
         value={value ?? ''}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
@@ -75,14 +89,14 @@ function MobileDashboard() {
     const saved = localStorage.getItem(storageKey);
     if (!saved) return defaultShop;
     try {
-      return { ...defaultShop, ...JSON.parse(saved) };
+      return { ...defaultShop, ...JSON.parse(saved), footerCredit: defaultShop.footerCredit };
     } catch {
       return defaultShop;
     }
   });
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState(() => ({ ...defaultForm, date: indiaToday(), appraisalDate: indiaToday(), signatureDate: indiaToday() }));
   const [rates, setRates] = useState(DEFAULT_RATES);
-  const [rows, setRows] = useState(starterRows);
+  const [rows, setRows] = useState([freshRow()]);
   const [customColumns, setCustomColumns] = useState([]);
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
@@ -157,20 +171,7 @@ function MobileDashboard() {
   }
 
   function addRow() {
-    setRows((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        description: '',
-        units: 1,
-        stoneWeight: 0,
-        grossWeight: 0,
-        netWeight: 0,
-        purity: '22 Ct',
-        customValues: {},
-        marketManual: false,
-      },
-    ]);
+    setRows((current) => [...current, freshRow()]);
     setStep(1);
   }
 
@@ -192,7 +193,7 @@ function MobileDashboard() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || 'Upload failed');
       const qrImage = await QRCode.toDataURL(result.imageUrl, { margin: 1, width: 300 });
-      setShop((current) => ({ ...current, itemImageUrl: result.imageUrl, qrText: result.imageUrl, qrImage }));
+      setShop((current) => ({ ...current, itemImageUrl: result.imageUrl, qrText: result.imageUrl, qrImage, footerCredit: defaultShop.footerCredit }));
       setStatus('Gold photo uploaded');
     } catch (uploadError) {
       setStatus(`Upload failed: ${uploadError.message}`);
@@ -215,7 +216,7 @@ function MobileDashboard() {
   }
 
   function payload() {
-    return { shop, form, rates, rows: calculatedRows, customColumns, totals, summaries, amountWords };
+    return { shop: { ...shop, footerCredit: defaultShop.footerCredit }, form, rates, rows: calculatedRows, customColumns, totals, summaries, amountWords };
   }
 
   async function saveCertificate() {
@@ -241,7 +242,7 @@ function MobileDashboard() {
     if (!validate()) return;
     const saved = await saveCertificate();
     if (!saved) return;
-    await generateCertificatePdf({ shop, form, rows: calculatedRows, customColumns, totals, summaries });
+    await generateCertificatePdf({ shop: { ...shop, footerCredit: defaultShop.footerCredit }, form, rows: calculatedRows, customColumns, totals, summaries });
     setStatus('PDF downloaded');
   }
 
@@ -250,7 +251,7 @@ function MobileDashboard() {
     const saved = await saveCertificate();
     if (!saved) return;
     const { blob, filename } = await generateCertificatePdf(
-      { shop, form, rows: calculatedRows, customColumns, totals, summaries },
+      { shop: { ...shop, footerCredit: defaultShop.footerCredit }, form, rows: calculatedRows, customColumns, totals, summaries },
       { save: false },
     );
     const file = new File([blob], filename, { type: 'application/pdf' });
@@ -473,24 +474,25 @@ function MobileDashboard() {
               </div>
               {shop.itemImageUrl && <div className="mt-3 flex items-center gap-3"><img src={shop.itemImageUrl} alt="Gold item" className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200" /><div><p className="text-sm font-bold text-slate-900">Photo uploaded</p><p className="text-xs text-slate-500">QR is ready for the certificate.</p></div></div>}
               <div className="mt-4 grid gap-3">
-                <Field label="Shop Name" value={shop.nameHindi} onChange={(v) => setShop((current) => ({ ...current, nameHindi: v }))} />
-                <Field label="Shop Address" value={shop.addressHindi} onChange={(v) => setShop((current) => ({ ...current, addressHindi: v }))} />
-                <Field label="Registration No." value={shop.registrationNo} onChange={(v) => setShop((current) => ({ ...current, registrationNo: v }))} />
-                <Field label="Appraiser A/c No." value={shop.appraiserAccount} onChange={(v) => setShop((current) => ({ ...current, appraiserAccount: v }))} />
-                <Field label="Footer Credit" value={shop.footerCredit} onChange={(v) => setShop((current) => ({ ...current, footerCredit: v }))} />
+                <Field label="Shop Name" value={shop.nameHindi} onChange={() => {}} />
+                <Field label="Shop Address" value={shop.addressHindi} onChange={() => {}} />
+                <Field label="Registration No." value={shop.registrationNo} onChange={() => {}} />
+                <Field label="Appraiser A/c No." value={shop.appraiserAccount} onChange={() => {}} />
               </div>
             </MobileCard>
           </div>
         )}
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 z-30 px-4 pb-2">
-        <div className="mx-auto flex max-w-md items-center gap-2 rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur-xl">
-          <button onClick={saveCertificate} className="flex-1 rounded-2xl bg-slate-100 px-3 py-3 text-xs font-extrabold text-slate-800">Save</button>
-          <button onClick={generatePdf} className="flex-[1.4] rounded-2xl bg-indigo-600 px-3 py-3 text-xs font-extrabold text-white shadow-lg shadow-indigo-600/20">Generate PDF</button>
-          <button onClick={sharePdf} className="flex-1 rounded-2xl bg-slate-900 px-3 py-3 text-xs font-extrabold text-white">Share</button>
+      {step === 2 && (
+        <div className="fixed bottom-16 left-0 right-0 z-30 px-4 pb-2">
+          <div className="mx-auto grid max-w-md grid-cols-3 gap-2 rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur-xl">
+            <button onClick={saveCertificate} className="w-full rounded-2xl bg-slate-100 px-2 py-3 text-xs font-extrabold text-slate-800">Save</button>
+            <button onClick={generatePdf} className="w-full rounded-2xl bg-indigo-600 px-2 py-3 text-xs font-extrabold text-white shadow-lg shadow-indigo-600/20">Generate PDF</button>
+            <button onClick={sharePdf} className="w-full rounded-2xl bg-slate-900 px-2 py-3 text-xs font-extrabold text-white">Share</button>
+          </div>
         </div>
-      </div>
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl">
         <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
