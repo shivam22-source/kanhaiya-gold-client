@@ -1,13 +1,43 @@
-const OFFICIAL_SOURCE = 'https://www.ibja.co/';
-const SOURCE_RATES_PAGE = 'https://www.ibjarates.com/';
+const OFFICIAL_SOURCE = 'https://www.ibjarates.com/';
 
-function extractRate(html, label) {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`${escaped}\\s*:\\s*(?:₹|&#8377;|Rs\\.?\\s*)?([0-9,]+(?:\\.[0-9]+)?)`, 'i');
-  const match = html.match(pattern);
-  if (!match) return null;
-  const value = Number(match[1].replace(/,/g, ''));
-  return Number.isFinite(value) ? value : null;
+function extractPmRates(html) {
+  const normalize = (value) => Number(String(value).replace(/[^0-9.]/g, ''));
+  const rates = {};
+  const tablePattern = /Gold\s+(999|916|750|585)\s*\|?\s*([0-9,.]+)\s*\|\s*([0-9,.]+)/gi;
+  let match;
+
+  while ((match = tablePattern.exec(html))) {
+    const purity = match[1];
+    const pmPer10g = normalize(match[3]);
+    if (Number.isFinite(pmPer10g)) rates[purity] = pmPer10g / 10;
+  }
+
+  if (!Object.keys(rates).length) {
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ');
+    const textPattern = /Gold\s+(999|916|750|585)\s+([0-9,.]+)\s+([0-9,.]+)/gi;
+    while ((match = textPattern.exec(text))) {
+      const purity = match[1];
+      const pmPer10g = normalize(match[3]);
+      if (Number.isFinite(pmPer10g)) rates[purity] = pmPer10g / 10;
+    }
+  }
+
+  if (!rates['999'] && !rates['916'] && !rates['750'] && !rates['585']) {
+    throw new Error('Could not read the current IBJA benchmark table');
+  }
+
+  // IBJA publicly publishes 999, 916, 750 and 585. 20 Ct is derived from
+  // the 999 benchmark using 833/999 fineness and is explicitly labelled derived.
+  if (rates['999'] && !rates['20']) {
+    rates['20'] = Number((rates['999'] * (833 / 999)).toFixed(2));
+  }
+
+  return rates;
 }
 
 export async function getMarketRates(_req, res) {
@@ -20,42 +50,34 @@ export async function getMarketRates(_req, res) {
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!response.ok) {
-      throw new Error(`IBJA public rates page returned HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`IBJA public page returned HTTP ${response.status}`);
 
     const html = await response.text();
-    const rates = {
-      '24 Ct': extractRate(html, 'Fine Gold (999)'),
-      '22 Ct': extractRate(html, '22 KT'),
-      '20 Ct': extractRate(html, '20 KT'),
-      '18 Ct': extractRate(html, '18 KT'),
-      '14 Ct': extractRate(html, '14 KT'),
-    };
-
-    const missing = Object.entries(rates).filter(([, value]) => value == null).map(([key]) => key);
-    if (missing.length) {
-      throw new Error(`Could not read IBJA public rates for: ${missing.join(', ')}`);
-    }
+    const raw = extractPmRates(html);
 
     res.json({
       source: 'IBJA',
       sourceUrl: OFFICIAL_SOURCE,
-      ratesUrl: SOURCE_RATES_PAGE,
       market: 'India benchmark',
-      rateType: 'Indicative Retail Selling Rates for Gold Jewellery (AM)',
+      rateType: 'PM',
       unit: 'INR/gm',
       fetchedAt: new Date().toISOString(),
-      rates,
-      note: 'Rates shown by IBJA are per gram and exclude 3% GST and making charges.',
+      derived: ['20 Ct'],
+      rates: {
+        '24 Ct': raw['999'] ?? null,
+        '22 Ct': raw['916'] ?? null,
+        '20 Ct': raw['20'] ?? null,
+        '18 Ct': raw['750'] ?? null,
+        '14 Ct': raw['585'] ?? null,
+      },
+      note: 'IBJA publishes rates per 10gm; the app converts them to INR/gm. Rates exclude GST and making charges.',
     });
   } catch (error) {
-    console.error('IBJA public market-rate sync failed:', error);
+    console.error('IBJA market-rate sync failed:', error);
     res.status(502).json({
-      message: 'Could not sync the latest IBJA public rate.',
+      message: 'Could not sync the latest IBJA benchmark rate.',
       source: 'IBJA',
       sourceUrl: OFFICIAL_SOURCE,
-      ratesUrl: SOURCE_RATES_PAGE,
       detail: error.message,
     });
   }
