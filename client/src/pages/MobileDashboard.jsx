@@ -110,6 +110,7 @@ function MobileDashboard() {
   const [marketRates, setMarketRates] = useState(null);
   const [marketMeta, setMarketMeta] = useState(null);
   const [marketLoading, setMarketLoading] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(shop));
@@ -128,21 +129,16 @@ function MobileDashboard() {
     }
   }, []);
 
-  // Keep an explicit history stack for the three certificate steps.
-  // Browser/Android Back now behaves like native app navigation:
-  // Review -> Items -> Details -> leave the app.
   useEffect(() => {
     const currentState = window.history.state;
     if (!currentState?.kanhaiyaApp || currentState.screen !== 'certificate-step') {
       window.history.replaceState({ kanhaiyaApp: true, screen: 'certificate-step', step: 0 }, '', window.location.href);
     }
-
     const handlePopState = (event) => {
       if (event.state?.kanhaiyaApp && event.state.screen === 'certificate-step') {
         setStep(Math.max(0, Math.min(2, Number(event.state.step) || 0)));
       }
     };
-
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -224,9 +220,10 @@ function MobileDashboard() {
   }
 
   async function uploadImage(file) {
-    if (!file) return;
+    if (!file || photoUploading) return;
     try {
-      setStatus('Uploading gold photo...');
+      setPhotoUploading(true);
+      setStatus('Uploading gold photo…');
       const formData = new FormData();
       formData.append('image', file);
       const response = await fetch(`${API_BASE}/uploads/gold-item`, { method: 'POST', body: formData });
@@ -234,9 +231,11 @@ function MobileDashboard() {
       if (!response.ok) throw new Error(result.message || 'Upload failed');
       const qrImage = await QRCode.toDataURL(result.imageUrl, { margin: 1, width: 300 });
       setShop((current) => ({ ...current, itemImageUrl: result.imageUrl, qrText: result.imageUrl, qrImage, footerCredit: defaultShop.footerCredit }));
-      setStatus('Gold photo uploaded');
+      setStatus('Gold photo uploaded successfully');
     } catch (uploadError) {
       setStatus(`Upload failed: ${uploadError.message}`);
+    } finally {
+      setPhotoUploading(false);
     }
   }
 
@@ -407,9 +406,7 @@ function MobileDashboard() {
                   <button onClick={syncMarketRates} disabled={marketLoading} className="flex-1 rounded-xl bg-slate-900 px-3 py-3 text-xs font-bold text-white disabled:opacity-50">
                     {marketLoading ? 'Syncing…' : 'Sync Latest Rate'}
                   </button>
-                  <button onClick={applyMarketRates} disabled={!marketRates} className="flex-1 rounded-xl bg-indigo-600 px-3 py-3 text-xs font-bold text-white disabled:opacity-40">
-                    Apply to Appraisal
-                  </button>
+                  <button onClick={applyMarketRates} disabled={!marketRates} className="flex-1 rounded-xl bg-indigo-600 px-3 py-3 text-xs font-bold text-white disabled:opacity-40">Apply to Appraisal</button>
                 </div>
                 {marketMeta?.fetchedAt && <p className="mt-2 text-[10px] text-slate-500">Last synced: {new Date(marketMeta.fetchedAt).toLocaleString('en-IN')} · {marketMeta.derived?.includes('20 Ct') ? '20 Ct derived from fineness' : 'All rates published'}</p>}
                 {marketMeta?.rateDate && <p className="mt-1 text-[10px] font-bold text-slate-600">Rate date: {marketMeta.rateDate} · latest published business day</p>}
@@ -449,12 +446,7 @@ function MobileDashboard() {
                         <Field label="Stone Wt (gm)" type="number" value={row.stoneWeight} onChange={(v) => updateRow(row.id, 'stoneWeight', v)} />
                         <Field label="Gross Wt (gm)" type="number" value={row.grossWeight} onChange={(v) => updateRow(row.id, 'grossWeight', v)} />
                         <Field label="Net Wt (gm)" type="number" value={row.netWeight} onChange={(v) => updateRow(row.id, 'netWeight', v)} />
-                        <Field
-                          label="Market Value"
-                          type="number"
-                          value={row.marketManual || row.netWeight !== '' ? row.marketValue : ''}
-                          onChange={(v) => updateRow(row.id, 'marketValue', v)}
-                        />
+                        <Field label="Market Value" type="number" value={row.marketManual || row.netWeight !== '' ? row.marketValue : ''} onChange={(v) => updateRow(row.id, 'marketValue', v)} />
                       </div>
                       <div className="flex items-center justify-between rounded-2xl bg-white p-3 ring-1 ring-slate-200">
                         <div>
@@ -491,33 +483,29 @@ function MobileDashboard() {
                 <p className="mt-2 text-xs leading-5 text-slate-300">{amountWords}</p>
               </div>
             </MobileCard>
-
             <MobileCard title="Purity Summary">
               <div className="space-y-2">
                 {summaries.map((summary) => (
                   <div key={summary.purity} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                    <div>
-                      <p className="font-extrabold text-slate-900">{summary.purity}</p>
-                      <p className="text-xs text-slate-500">Gross {formatWeight(summary.grossWeight)} gm</p>
-                    </div>
+                    <div><p className="font-extrabold text-slate-900">{summary.purity}</p><p className="text-xs text-slate-500">Gross {formatWeight(summary.grossWeight)} gm</p></div>
                     <p className="text-sm font-bold text-slate-700">Net {formatWeight(summary.netWeight)} gm</p>
                   </div>
                 ))}
               </div>
             </MobileCard>
-
             <MobileCard title="Gold Item Photo & Shop">
               <div className="grid grid-cols-2 gap-3">
-                <label className="flex min-h-24 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 text-center transition active:scale-[0.99]">
-                  <input type="file" className="hidden" accept="image/*" capture="environment" onChange={(event) => uploadImage(event.target.files?.[0])} />
-                  <span className="text-sm font-bold text-slate-600">📷 Take Photo</span>
+                <label className={`flex min-h-24 items-center justify-center rounded-2xl border-2 border-dashed px-3 text-center transition ${photoUploading ? 'cursor-not-allowed border-indigo-200 bg-indigo-50' : 'cursor-pointer border-slate-300 bg-slate-50 active:scale-[0.99]'}`}>
+                  <input type="file" className="hidden" accept="image/*" capture="environment" disabled={photoUploading} onChange={(event) => uploadImage(event.target.files?.[0])} />
+                  <span className="text-sm font-bold text-slate-600">{photoUploading ? '⏳ Uploading…' : '📷 Take Photo'}</span>
                 </label>
-                <label className="flex min-h-24 cursor-pointer items-center justify-center rounded-2xl border-2 border-slate-200 bg-white px-3 text-center shadow-sm transition active:scale-[0.99]">
-                  <input type="file" className="hidden" accept="image/*" onChange={(event) => uploadImage(event.target.files?.[0])} />
-                  <span className="text-sm font-bold text-slate-600">🖼️ Choose from Gallery</span>
+                <label className={`flex min-h-24 items-center justify-center rounded-2xl border-2 px-3 text-center transition ${photoUploading ? 'cursor-not-allowed border-indigo-200 bg-indigo-50' : 'cursor-pointer border-slate-200 bg-white shadow-sm active:scale-[0.99]'}`}>
+                  <input type="file" className="hidden" accept="image/*" disabled={photoUploading} onChange={(event) => uploadImage(event.target.files?.[0])} />
+                  <span className="text-sm font-bold text-slate-600">{photoUploading ? '⏳ Uploading…' : '🖼️ Choose from Gallery'}</span>
                 </label>
               </div>
-              {shop.itemImageUrl && <div className="mt-3 flex items-center gap-3"><img src={shop.itemImageUrl} alt="Gold item" className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200" /><div><p className="text-sm font-bold text-slate-900">Photo uploaded</p><p className="text-xs text-slate-500">QR is ready for the certificate.</p></div></div>}
+              {photoUploading && <div className="mt-3 rounded-2xl bg-indigo-50 px-4 py-3 text-xs font-semibold text-indigo-700">Photo is uploading. Please wait…</div>}
+              {shop.itemImageUrl && !photoUploading && <div className="mt-3 flex items-center gap-3"><img src={shop.itemImageUrl} alt="Gold item" className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200" /><div><p className="text-sm font-bold text-slate-900">Photo uploaded</p><p className="text-xs text-slate-500">QR is ready for the certificate.</p></div></div>}
               <div className="mt-4 grid gap-3">
                 <Field label="Shop Name" value={shop.nameHindi} readOnly />
                 <Field label="Shop Address" value={shop.addressHindi} readOnly />
