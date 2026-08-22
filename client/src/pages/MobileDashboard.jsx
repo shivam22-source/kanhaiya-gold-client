@@ -32,9 +32,9 @@ const freshRow = () => ({
   id: crypto.randomUUID(),
   description: '',
   units: 1,
-  stoneWeight: 0,
-  grossWeight: 0,
-  netWeight: 0,
+  stoneWeight: '',
+  grossWeight: '',
+  netWeight: '',
   purity: '22 Ct',
   customValues: {},
   marketManual: false,
@@ -53,7 +53,7 @@ const indiaToday = () => {
 
 const defaultForm = {
   refNo: '',
-  appraisalCharge: 0,
+  appraisalCharge: '',
   date: '',
   bankAccount: '',
   branchName: '',
@@ -80,7 +80,7 @@ function Field({ label, value, onChange, type = 'text', inputMode, placeholder, 
         type={type}
         inputMode={inputMode}
         autoComplete="off"
-        value={type === 'number' && Number(value) === 0 ? '' : (value ?? '')}
+        value={value ?? ''}
         placeholder={placeholder}
         readOnly={readOnly}
         disabled={disabled}
@@ -200,9 +200,11 @@ function MobileDashboard() {
   function updateRow(id, key, value) {
     setRows((current) => current.map((row) => {
       if (row.id !== id) return row;
+      const numericKeys = ['units', 'stoneWeight', 'grossWeight', 'netWeight', 'marketValue'];
+      const nextValue = numericKeys.includes(key) ? (value === '' ? '' : Number(value)) : value;
       return {
         ...row,
-        [key]: ['units', 'stoneWeight', 'grossWeight', 'netWeight', 'marketValue'].includes(key) ? Number(value) : value,
+        [key]: nextValue,
         marketManual: key === 'marketValue' ? true : row.marketManual,
       };
     }));
@@ -372,7 +374,7 @@ function MobileDashboard() {
                 <Field label="Bank A/c No." value={form.bankAccount} onChange={(v) => updateForm('bankAccount', v)} inputMode="numeric" />
                 <Field label="Branch Name" value={form.branchName} onChange={(v) => updateForm('branchName', v)} />
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Appraisal Charge" type="number" value={form.appraisalCharge} onChange={(v) => updateForm('appraisalCharge', Number(v))} />
+                  <Field label="Appraisal Charge" type="number" value={form.appraisalCharge} onChange={(v) => updateForm('appraisalCharge', v === '' ? '' : Number(v))} />
                   <Field label="Appraisal Date" type="date" value={form.appraisalDate} onChange={(v) => updateForm('appraisalDate', v)} />
                 </div>
                 <Field label="Cash-in-charge" value={form.cashInCharge} onChange={(v) => updateForm('cashInCharge', v)} />
@@ -447,12 +449,17 @@ function MobileDashboard() {
                         <Field label="Stone Wt (gm)" type="number" value={row.stoneWeight} onChange={(v) => updateRow(row.id, 'stoneWeight', v)} />
                         <Field label="Gross Wt (gm)" type="number" value={row.grossWeight} onChange={(v) => updateRow(row.id, 'grossWeight', v)} />
                         <Field label="Net Wt (gm)" type="number" value={row.netWeight} onChange={(v) => updateRow(row.id, 'netWeight', v)} />
-                        <Field label="Market Value" type="number" value={row.marketValue} onChange={(v) => updateRow(row.id, 'marketValue', v)} />
+                        <Field
+                          label="Market Value"
+                          type="number"
+                          value={row.marketManual || Number(row.netWeight) > 0 ? row.marketValue : ''}
+                          onChange={(v) => updateRow(row.id, 'marketValue', v)}
+                        />
                       </div>
                       <div className="flex items-center justify-between rounded-2xl bg-white p-3 ring-1 ring-slate-200">
                         <div>
                           <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Auto valuation</p>
-                          <p className="mt-1 text-lg font-black text-slate-900">₹{formatMoney(row.marketValue)}</p>
+                          <p className="mt-1 text-lg font-black text-slate-900">{row.marketManual || Number(row.netWeight) > 0 ? `₹${formatMoney(row.marketValue)}` : '—'}</p>
                         </div>
                         {row.marketManual && <button onClick={() => resetMarketValue(row.id)} className="rounded-xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">Use Auto</button>}
                       </div>
