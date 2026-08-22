@@ -1,81 +1,61 @@
-const OFFICIAL_SOURCE = 'https://www.ibjarates.com/';
+const OFFICIAL_SOURCE = 'https://www.ibja.co/';
+const SOURCE_RATES_PAGE = 'https://www.ibjarates.com/';
 
-function normalizeRates(payload) {
-  const source = payload?.rates || payload?.data || payload;
-  const pick = (keys) => {
-    for (const key of keys) {
-      if (source && source[key] != null) return Number(source[key]);
-    }
-    return null;
-  };
-
-  // Supports common API response shapes while keeping the app's purity names stable.
-  const rates = {
-    '24 Ct': pick(['24Ct', '24K', '999', 'gold999', 'gold_999']),
-    '22 Ct': pick(['22Ct', '22K', '916', 'gold916', 'gold_916']),
-    '20 Ct': pick(['20Ct', '20K', '833']),
-    '18 Ct': pick(['18Ct', '18K', '750', 'gold750', 'gold_750']),
-    '14 Ct': pick(['14Ct', '14K', '585', 'gold585', 'gold_585']),
-  };
-
-  // IBJA rates are commonly quoted per 10g on its benchmark site.
-  const unit = String(payload?.unit || payload?.rateUnit || '').toLowerCase();
-  if (unit.includes('10')) {
-    Object.keys(rates).forEach((key) => {
-      if (rates[key] != null) rates[key] = Number((rates[key] / 10).toFixed(2));
-    });
-  }
-
-  if (rates['24 Ct'] == null && rates['22 Ct'] == null && rates['20 Ct'] == null && rates['18 Ct'] == null && rates['14 Ct'] == null) {
-    throw new Error('IBJA API response could not be mapped to the app purities');
-  }
-
-  return rates;
+function extractRate(html, label) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`${escaped}\\s*:\\s*(?:₹|&#8377;|Rs\\.?\\s*)?([0-9,]+(?:\\.[0-9]+)?)`, 'i');
+  const match = html.match(pattern);
+  if (!match) return null;
+  const value = Number(match[1].replace(/,/g, ''));
+  return Number.isFinite(value) ? value : null;
 }
 
 export async function getMarketRates(_req, res) {
-  const apiUrl = process.env.IBJA_RATES_API_URL;
-  const apiKey = process.env.IBJA_RATES_API_KEY;
-
-  if (!apiUrl || !apiKey) {
-    return res.status(503).json({
-      message: 'IBJA live sync is not configured yet.',
-      source: 'IBJA',
-      sourceUrl: OFFICIAL_SOURCE,
-      configuration: 'Add IBJA_RATES_API_URL and IBJA_RATES_API_KEY to the backend environment.',
-    });
-  }
-
   try {
-    const response = await fetch(apiUrl, {
+    const response = await fetch(OFFICIAL_SOURCE, {
       headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        'X-API-Key': apiKey,
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': 'Kanhaiya-Gold-Appraiser/1.0',
       },
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!response.ok) throw new Error(`IBJA API returned HTTP ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`IBJA public rates page returned HTTP ${response.status}`);
+    }
 
-    const payload = await response.json();
-    const rates = normalizeRates(payload);
+    const html = await response.text();
+    const rates = {
+      '24 Ct': extractRate(html, 'Fine Gold (999)'),
+      '22 Ct': extractRate(html, '22 KT'),
+      '20 Ct': extractRate(html, '20 KT'),
+      '18 Ct': extractRate(html, '18 KT'),
+      '14 Ct': extractRate(html, '14 KT'),
+    };
+
+    const missing = Object.entries(rates).filter(([, value]) => value == null).map(([key]) => key);
+    if (missing.length) {
+      throw new Error(`Could not read IBJA public rates for: ${missing.join(', ')}`);
+    }
 
     res.json({
       source: 'IBJA',
       sourceUrl: OFFICIAL_SOURCE,
+      ratesUrl: SOURCE_RATES_PAGE,
       market: 'India benchmark',
-      rateType: payload?.rateType || payload?.session || 'Latest',
+      rateType: 'Indicative Retail Selling Rates for Gold Jewellery (AM)',
       unit: 'INR/gm',
       fetchedAt: new Date().toISOString(),
       rates,
+      note: 'Rates shown by IBJA are per gram and exclude 3% GST and making charges.',
     });
   } catch (error) {
-    console.error('IBJA market-rate sync failed:', error);
+    console.error('IBJA public market-rate sync failed:', error);
     res.status(502).json({
-      message: 'Could not sync the latest IBJA rate.',
+      message: 'Could not sync the latest IBJA public rate.',
       source: 'IBJA',
       sourceUrl: OFFICIAL_SOURCE,
+      ratesUrl: SOURCE_RATES_PAGE,
       detail: error.message,
     });
   }
