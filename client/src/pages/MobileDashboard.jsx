@@ -80,7 +80,7 @@ function Field({ label, value, onChange, type = 'text', inputMode, placeholder, 
         type={type}
         inputMode={inputMode}
         autoComplete="off"
-        value={value ?? ''}
+        value={type === 'number' && Number(value) === 0 ? '' : (value ?? '')}
         placeholder={placeholder}
         readOnly={readOnly}
         disabled={disabled}
