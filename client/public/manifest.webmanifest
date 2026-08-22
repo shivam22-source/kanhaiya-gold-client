@@ -1,15 +1,17 @@
 {
-  "name": "SBI Gold Appraiser Certificate",
-  "short_name": "Gold Cert",
-  "description": "Generate, share, and search SBI gold loan appraiser certificates.",
+  "name": "Kanhaiya Gold Appraiser",
+  "short_name": "Kanhaiya Gold",
+  "description": "Kanhaiya Gold app for creating, saving, and sharing gold appraisal certificates.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#1e293b",
+  "orientation": "portrait",
+  "background_color": "#f6f7fb",
+  "theme_color": "#f6f7fb",
   "icons": [
     {
       "src": "/icon.svg",
-      "sizes": "any",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
