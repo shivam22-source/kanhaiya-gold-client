@@ -4,7 +4,7 @@
 
 :root {
   color: #1e293b;
-  background: #f8fafc;
+  background: #f6f7fb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -14,12 +14,18 @@
 html {
   -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  background: #f6f7fb;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   overflow-x: hidden;
+  background: #f6f7fb;
+  overscroll-behavior: none;
+  -webkit-touch-callout: none;
 }
 
 button,
@@ -35,30 +41,31 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+button {
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
 input,
 select,
 textarea {
   font: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Shop master fields are fixed configuration on both desktop and mobile.
-   Use Tailwind utilities for the locked visual state while keeping the
-   photo file chooser usable. */
-main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:not([type="file"]) {
-  @apply cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500;
-  pointer-events: none !important;
-  touch-action: none !important;
-  caret-color: transparent !important;
-  user-select: none !important;
-}
-
-@layer components {
-  input:disabled {
-    @apply cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500 opacity-100;
-  }
-}
-
+/* Native-feeling mobile transitions without changing the existing layout. */
 @media (max-width: 767px) {
+  button:not(:disabled),
+  a {
+    transition: transform 140ms ease, opacity 140ms ease, background-color 140ms ease;
+  }
+
+  button:not(:disabled):active,
+  a:active {
+    transform: scale(0.985);
+  }
+
   body {
     background: #f6f7fb;
   }
@@ -69,17 +76,14 @@ main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:
     font-size: 16px;
   }
 
-  /* Reserve space for the fixed bottom navigation. Add action-bar space only on Review. */
   main.min-h-screen.pb-24 {
     padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
 
-  /* Review is the third step button in the mobile step selector. */
   main:has(> div:nth-child(2) > div:nth-child(2) > button:nth-child(3).bg-indigo-600) {
     padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
   }
 
-  /* Save / Generate PDF / Share belong only to the final Review step. */
   div.fixed.bottom-16.left-0.right-0.z-30 {
     display: none;
   }
@@ -88,7 +92,6 @@ main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:
     display: block;
   }
 
-  /* Keep all three actions exactly the same width. */
   div.fixed.bottom-16.left-0.right-0.z-30 > div {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -105,12 +108,26 @@ main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:
     white-space: nowrap;
   }
 
-  /* Keep the action bar above bottom navigation and the phone gesture area. */
   div.fixed.bottom-16.left-0.right-0.z-30 {
     bottom: calc(4.25rem + env(safe-area-inset-bottom));
   }
 
   nav.fixed.bottom-0.left-0.right-0.z-40 {
     padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+}
+
+/* Shop master fields are fixed configuration on both desktop and mobile. */
+main:has(section:has(input[type="file"])) section:has(input[type="file"]) input:not([type="file"]) {
+  @apply cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500;
+  pointer-events: none !important;
+  touch-action: none !important;
+  caret-color: transparent !important;
+  user-select: none !important;
+}
+
+@layer components {
+  input:disabled {
+    @apply cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500 opacity-100;
   }
 }
