@@ -123,6 +123,23 @@ function MobileDashboard() {
   }, [shop]);
 
   useEffect(() => {
+    fetchNextSerial();
+  }, []);
+
+  async function fetchNextSerial() {
+    try {
+      const response = await fetch(`${API_BASE}/certificates/next-serial?prefix=KJ`);
+      if (!response.ok) return;
+      const result = await response.json();
+      if (result.nextRefNo) {
+        setForm((current) => ({ ...current, refNo: result.nextRefNo }));
+      }
+    } catch {
+      // Offline or server unavailable: leave the current value untouched.
+    }
+  }
+
+  useEffect(() => {
     const currentState = window.history.state;
     if (!currentState?.kanhaiyaApp || currentState.screen !== 'certificate-step') {
       window.history.replaceState({ kanhaiyaApp: true, screen: 'certificate-step', step: 0 }, '', window.location.href);
@@ -159,6 +176,7 @@ function MobileDashboard() {
     setStatus('');
     setPhotoUploading(false);
     setBaseRate24ct(DEFAULT_BASE_RATE_24CT);
+    fetchNextSerial();
     goToStep(0);
   }
 
@@ -262,6 +280,7 @@ function MobileDashboard() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || 'Save failed');
       setStatus(`Saved for ${result.borrowerName}`);
+      await fetchNextSerial();
       return result;
     } catch (saveError) {
       setStatus(`Save failed: ${saveError.message}`);
@@ -359,7 +378,7 @@ function MobileDashboard() {
             <MobileCard title="Bank & Appraisal">
               <div className="grid gap-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Ref No." value={form.refNo} onChange={(v) => updateForm('refNo', v)} />
+                  <Field label="Serial No. (auto)" value={form.refNo} onChange={(v) => updateForm('refNo', v)} />
                   <Field label="Date" type="date" value={form.date} onChange={(v) => updateForm('date', v)} />
                 </div>
                 <Field label="Bank A/c No." value={form.bankAccount} onChange={(v) => updateForm('bankAccount', v)} inputMode="numeric" />
@@ -443,7 +462,7 @@ function MobileDashboard() {
                       <div className="grid grid-cols-2 gap-3">
                         <Field label="Stone Wt (gm)" type="number" value={row.stoneWeight} onChange={(v) => updateRow(row.id, 'stoneWeight', v)} />
                         <Field label="Gross Wt (gm)" type="number" value={row.grossWeight} onChange={(v) => updateRow(row.id, 'grossWeight', v)} />
-                        <Field label="Net Wt (gm)" type="number" value={row.netWeight} onChange={(v) => updateRow(row.id, 'netWeight', v)} />
+                        <Field label="Net Wt (gm) - auto" value={formatWeight(row.netWeight)} readOnly />
                         <Field label="Market Value" type="number" value={row.marketManual || row.netWeight !== '' ? row.marketValue : ''} onChange={(v) => updateRow(row.id, 'marketValue', v)} />
                       </div>
                       <div className="flex items-center justify-between rounded-2xl bg-white p-3 ring-1 ring-slate-200">
