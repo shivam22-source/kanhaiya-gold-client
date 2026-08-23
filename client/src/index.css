@@ -115,6 +115,11 @@ textarea {
   nav.fixed.bottom-0.left-0.right-0.z-40 {
     padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
   }
+
+  /* Market/IBJA section has been retired from the mobile certificate workflow. */
+  main > div.px-4.pt-4 > div.mt-4.space-y-4:has(> button) > section:nth-child(3) {
+    display: none !important;
+  }
 }
 
 /* Shop master fields are fixed configuration on both desktop and mobile. */
