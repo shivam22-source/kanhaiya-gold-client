@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kanhaiya-gold-shell-v2';
+const CACHE_NAME = 'kanhaiya-gold-shell-v3';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
