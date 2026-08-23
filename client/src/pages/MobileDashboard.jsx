@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
-  DEFAULT_RATES,
+  DEFAULT_BASE_RATE_24CT,
   PURITIES,
+  PURITY_PERCENTAGES,
   calculateRows,
   calculateTotals,
+  deriveRatesFromBaseRate,
   formatMoney,
   formatWeight,
   groupPuritySummaries,
@@ -15,7 +17,6 @@ import { generateCertificatePdf } from '../utils/pdfGenerator';
 import { API_BASE } from '../utils/config';
 
 const storageKey = 'sbi-gold-appraiser-shop-settings';
-const marketRateStorageKey = 'sbi-gold-appraiser-market-rates';
 
 const defaultShop = {
   nameHindi: 'कन्हैया ज्वेलर्स',
@@ -108,34 +109,18 @@ function MobileDashboard() {
     }
   });
   const [form, setForm] = useState(() => ({ ...defaultForm, date: indiaToday(), appraisalDate: indiaToday(), signatureDate: indiaToday() }));
-  const [rates, setRates] = useState(DEFAULT_RATES);
+  const [baseRate24ct, setBaseRate24ct] = useState(DEFAULT_BASE_RATE_24CT);
+  const rates = useMemo(() => deriveRatesFromBaseRate(baseRate24ct), [baseRate24ct]);
   const [rows, setRows] = useState([freshRow()]);
   const [customColumns, setCustomColumns] = useState([]);
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
-  const [marketRates, setMarketRates] = useState(null);
-  const [marketMeta, setMarketMeta] = useState(null);
-  const [marketLoading, setMarketLoading] = useState(false);
-  const [marketApplied, setMarketApplied] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(shop));
   }, [shop]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(marketRateStorageKey);
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      setMarketRates(parsed.rates || null);
-      setMarketMeta(parsed.meta || null);
-      if (parsed.rates) setRates((current) => ({ ...current, ...parsed.rates }));
-    } catch {
-      localStorage.removeItem(marketRateStorageKey);
-    }
-  }, []);
 
   useEffect(() => {
     const currentState = window.history.state;
@@ -170,10 +155,10 @@ function MobileDashboard() {
     setRows([freshRow()]);
     setCustomColumns([]);
     setShop((current) => ({ ...current, itemImageUrl: '', qrText: '', qrImage: '' }));
-    setMarketApplied(false);
     setError('');
     setStatus('');
     setPhotoUploading(false);
+    setBaseRate24ct(DEFAULT_BASE_RATE_24CT);
     goToStep(0);
   }
 
@@ -181,32 +166,6 @@ function MobileDashboard() {
   const totals = useMemo(() => calculateTotals(calculatedRows), [calculatedRows]);
   const summaries = useMemo(() => groupPuritySummaries(calculatedRows), [calculatedRows]);
   const amountWords = useMemo(() => numberToWordsIndian(totals.marketValue), [totals.marketValue]);
-
-  async function syncMarketRates() {
-    try {
-      setMarketLoading(true);
-      setMarketApplied(false);
-      setStatus('Syncing latest IBJA gold rate...');
-      const response = await fetch(`${API_BASE}/market-rates`);
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.message || 'Market-rate sync failed');
-      setMarketRates(result.rates);
-      setMarketMeta(result);
-      localStorage.setItem(marketRateStorageKey, JSON.stringify({ rates: result.rates, meta: result }));
-      setStatus('Rate synced successfully. Tap “Use This Rate” to apply it to this appraisal.');
-    } catch (marketError) {
-      setStatus(`Rate sync failed: ${marketError.message}`);
-    } finally {
-      setMarketLoading(false);
-    }
-  }
-
-  function applyMarketRates() {
-    if (!marketRates) return;
-    setRates((current) => ({ ...current, ...marketRates }));
-    setMarketApplied(true);
-    setStatus('Rate applied successfully — this appraisal now uses the synced IBJA rate.');
-  }
 
   function updateForm(key, value) {
     setForm((current) => {
@@ -278,7 +237,17 @@ function MobileDashboard() {
   }
 
   function payload() {
-    return { shop: { ...shop, footerCredit: defaultShop.footerCredit }, form, rates, rows: calculatedRows, customColumns, totals, summaries, amountWords };
+    return {
+      shop: { ...shop, footerCredit: defaultShop.footerCredit },
+      form,
+      baseRate24ct,
+      rates,
+      rows: calculatedRows,
+      customColumns,
+      totals,
+      summaries,
+      amountWords,
+    };
   }
 
   async function saveCertificate() {
@@ -407,35 +376,39 @@ function MobileDashboard() {
               </div>
             </MobileCard>
 
-            <MobileCard title="Gold Market Rate">
+            <MobileCard title="Rate Settings">
               <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">IBJA India Benchmark</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">PM benchmark · converted to INR/gm · excludes GST & making charges</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">Official source</span>
+                <Field
+                  label="24 Ct Gold Rate / gm (Manual Market Rate)"
+                  type="number"
+                  step="0.01"
+                  value={baseRate24ct}
+                  onChange={(value) => setBaseRate24ct(value === '' ? '' : Number(value))}
+                />
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Enter the bank's 24 Ct market rate. All other purity rates are calculated automatically using the standard fineness percentages.
+                </p>
+
+                <div className="mt-4 overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
+                  <table className="w-full min-w-[430px] border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                        <th className="border-b border-slate-200 px-3 py-2 text-left">Purity</th>
+                        <th className="border-b border-slate-200 px-3 py-2 text-right">Fineness %</th>
+                        <th className="border-b border-slate-200 px-3 py-2 text-right">Rate / gm</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {PURITIES.map((purity) => (
+                        <tr key={purity}>
+                          <td className="border-b border-slate-100 px-3 py-2.5 font-bold text-slate-800">{purity}</td>
+                          <td className="border-b border-slate-100 px-3 py-2.5 text-right text-slate-500">{(PURITY_PERCENTAGES[purity] * 100).toFixed(2)}%</td>
+                          <td className="border-b border-slate-100 px-3 py-2.5 text-right font-black text-slate-900">₹{formatMoney(rates[purity])}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  {['24 Ct', '22 Ct', '20 Ct', '18 Ct', '14 Ct'].map((purity) => (
-                    <div key={purity} className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{purity}</p>
-                      <p className="mt-1 text-base font-black text-slate-900">{marketRates?.[purity] != null ? `₹${Number(marketRates[purity]).toLocaleString('en-IN')}` : '—'}</p>
-                      <p className="text-[10px] text-slate-400">per gm</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <button onClick={syncMarketRates} disabled={marketLoading} className="flex-1 rounded-xl bg-slate-900 px-3 py-3 text-xs font-bold text-white disabled:opacity-50">
-                    {marketLoading ? '⏳ Syncing…' : '↻ Sync Latest Rate'}
-                  </button>
-                  <button onClick={applyMarketRates} disabled={!marketRates || marketApplied} className={`flex-1 rounded-xl px-3 py-3 text-xs font-bold text-white ${marketApplied ? 'bg-emerald-600' : 'bg-indigo-600'} disabled:opacity-40`}>
-                    {marketApplied ? '✓ Rate Applied' : 'Use This Rate'}
-                  </button>
-                </div>
-                {marketMeta?.fetchedAt && <p className="mt-2 text-[10px] text-slate-500">Last synced: {new Date(marketMeta.fetchedAt).toLocaleString('en-IN')} · {marketMeta.derived?.includes('20 Ct') ? '20 Ct derived from fineness' : 'All rates published'}</p>}
-                {marketMeta?.rateDate && <p className="mt-1 text-[10px] font-bold text-slate-600">Rate date: {marketMeta.rateDate} · latest published business day</p>}
-                <a href="https://www.ibjarates.com/" target="_blank" rel="noreferrer" className="mt-2 inline-block text-[10px] font-bold text-indigo-600 underline">Verify on IBJA</a>
               </div>
             </MobileCard>
 
