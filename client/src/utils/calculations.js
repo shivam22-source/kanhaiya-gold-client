@@ -1,16 +1,29 @@
-export const PURITIES = ['14 Ct', '18 Ct', '20 Ct', '22 Ct', '24 Ct'];
+export const PURITIES = ['9 Ct', '14 Ct', '18 Ct', '20 Ct', '22 Ct', '23 Ct', '24 Ct'];
 
-export const DEFAULT_RATES = {
-  '14 Ct': 8283.33,
-  '18 Ct': 10650,
-  '20 Ct': 11833.33,
-  '22 Ct': 13016.67,
-  '24 Ct': 14200,
+export const PURITY_PERCENTAGES = {
+  '9 Ct': 0.37,
+  '14 Ct': 0.585,
+  '18 Ct': 0.75,
+  '20 Ct': 0.833,
+  '22 Ct': 0.916,
+  '23 Ct': 0.9583,
+  '24 Ct': 1,
 };
+
+export const DEFAULT_BASE_RATE_24CT = 14200;
 
 export function roundMoney(value) {
   return Math.round(((Number(value) || 0) + Number.EPSILON) * 100) / 100;
 }
+
+export function deriveRatesFromBaseRate(baseRate24ct) {
+  const base = Number(baseRate24ct) || 0;
+  return Object.fromEntries(
+    Object.entries(PURITY_PERCENTAGES).map(([purity, percentage]) => [purity, roundMoney(base * percentage)]),
+  );
+}
+
+export const DEFAULT_RATES = deriveRatesFromBaseRate(DEFAULT_BASE_RATE_24CT);
 
 export function formatMoney(value) {
   return new Intl.NumberFormat('en-US', {
@@ -23,15 +36,24 @@ export function formatWeight(value) {
   return (Number(value) || 0).toFixed(2);
 }
 
+export function calculateNetWeight(row) {
+  const net = (Number(row.grossWeight) || 0) - (Number(row.stoneWeight) || 0);
+  return roundMoney(Math.max(0, net));
+}
+
 export function calculateMarketValue(row, rates) {
   return roundMoney((Number(row.netWeight) || 0) * (Number(rates[row.purity]) || 0));
 }
 
 export function calculateRows(rows, rates) {
-  return rows.map((row) => ({
-    ...row,
-    marketValue: row.marketManual ? Number(row.marketValue) || 0 : calculateMarketValue(row, rates),
-  }));
+  return rows.map((row) => {
+    const netWeight = calculateNetWeight(row);
+    return {
+      ...row,
+      netWeight,
+      marketValue: row.marketManual ? Number(row.marketValue) || 0 : calculateMarketValue({ ...row, netWeight }, rates),
+    };
+  });
 }
 
 export function calculateTotals(rows) {
