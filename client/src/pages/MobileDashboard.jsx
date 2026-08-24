@@ -395,7 +395,7 @@ function MobileDashboard() {
               </div>
             </MobileCard>
 
-            <MobileCard title="Rate Settings">
+            <MobileCard title="Rate Settings" className="ring-2 ring-indigo-100">
               <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
                 <Field
                   label="24 Ct Gold Rate / gm (Manual Market Rate)"
@@ -407,7 +407,6 @@ function MobileDashboard() {
                 <p className="mt-2 text-xs leading-5 text-slate-500">
                   Enter the bank's 24 Ct market rate. All other purity rates are calculated automatically using the standard fineness percentages.
                 </p>
-
                 <div className="mt-4 overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
                   <table className="w-full min-w-[430px] border-collapse text-xs">
                     <thead>
