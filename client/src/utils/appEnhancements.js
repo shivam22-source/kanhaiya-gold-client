@@ -208,8 +208,8 @@ function openManagePanel() {
     'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
 
   const panel = document.createElement('div');
-  panel.style.cssText =
-    'background:#fff;border-radius:10px;padding:20px;max-width:560px;width:92%;max-height:80vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);';
+panel.style.cssText =
+  'background:#fff;border-radius:10px;padding:16px;max-width:560px;width:94%;max-height:85vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);box-sizing:border-box;';
 
   const title = document.createElement('h3');
   title.textContent = 'Branch → Cash-in-Charge List';
@@ -235,25 +235,25 @@ function openManagePanel() {
 
     entries.forEach(([key, entry]) => {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:8px;';
+      row.style.cssText =
+  'display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0;';
 
       const branchField = document.createElement('input');
       branchField.value = entry.branchName;
       branchField.placeholder = 'Branch name';
       branchField.style.cssText =
-        'flex:1;padding:5px;border:1px solid #ccc;border-radius:5px;font-size:13px;';
+        'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
 
       const cicField = document.createElement('input');
       cicField.value = entry.cashInCharge;
       cicField.placeholder = 'Cash-in-charge name';
       cicField.style.cssText =
-        'flex:1;padding:5px;border:1px solid #ccc;border-radius:5px;font-size:13px;';
+        'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
 
       const saveBtn = document.createElement('button');
       saveBtn.textContent = '💾';
       saveBtn.title = 'Save';
-      saveBtn.style.cssText =
-        'padding:5px 8px;border:none;border-radius:5px;background:#2e7d32;color:#fff;cursor:pointer;';
+      saveBtn.style.cssText = 'flex:0 0 auto;padding:6px 10px;border:none;border-radius:5px;background:#2e7d32;color:#fff;cursor:pointer;font-size:14px;';
       saveBtn.addEventListener('click', () => {
         const map2 = loadBranchMap();
         delete map2[key];
@@ -272,8 +272,8 @@ function openManagePanel() {
       const delBtn = document.createElement('button');
       delBtn.textContent = '🗑️';
       delBtn.title = 'Delete';
-      delBtn.style.cssText =
-        'padding:5px 8px;border:none;border-radius:5px;background:#c62828;color:#fff;cursor:pointer;';
+   delBtn.style.cssText =
+  'flex:0 0 auto;padding:6px 10px;border:none;border-radius:5px;background:#c62828;color:#fff;cursor:pointer;font-size:14px;';
       delBtn.addEventListener('click', () => {
         const map2 = loadBranchMap();
         delete map2[key];
@@ -292,23 +292,23 @@ function openManagePanel() {
   renderList();
 
   const addRow = document.createElement('div');
-  addRow.style.cssText =
-    'display:flex;gap:6px;margin-top:10px;border-top:1px solid #eee;padding-top:10px;';
+addRow.style.cssText =
+  'display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;border-top:1px solid #eee;padding-top:10px;';
 
   const newBranch = document.createElement('input');
   newBranch.placeholder = 'New branch name';
   newBranch.style.cssText =
-    'flex:1;padding:5px;border:1px solid #ccc;border-radius:5px;font-size:13px;';
+   'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
 
   const newCic = document.createElement('input');
   newCic.placeholder = 'Cash-in-charge name';
   newCic.style.cssText =
-    'flex:1;padding:5px;border:1px solid #ccc;border-radius:5px;font-size:13px;';
+   'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
 
   const addBtn = document.createElement('button');
   addBtn.textContent = '➕ Add';
   addBtn.style.cssText =
-    'padding:5px 10px;border:none;border-radius:5px;background:#1565c0;color:#fff;cursor:pointer;';
+  'flex:1 1 100%;padding:8px 10px;border:none;border-radius:5px;background:#1565c0;color:#fff;cursor:pointer;font-size:14px;';
   addBtn.addEventListener('click', () => {
     if (newBranch.value.trim() && newCic.value.trim()) {
       upsertBranchMapping(newBranch.value, newCic.value);
