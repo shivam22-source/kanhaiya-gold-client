@@ -28,7 +28,7 @@ const sampleRows = [
 
 const defaultShop = {
   nameHindi: 'कन्हैया ज्वेलर्स',
-  addressHindi: 'देकदार बाजार',
+  addressHindi: 'टेकटार बाजार',
   registrationNo: 'उद्यम रजि० नं०--BR-10-0038338',
   qrText: '',
   qrImage: '',

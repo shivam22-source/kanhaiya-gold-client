@@ -148,7 +148,7 @@ function createShopHeaderImage(shop) {
   ctx.font = '900 92px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
   ctx.fillText(safeText(shop.nameHindi) || 'कन्हैया ज्वेलर्स', canvas.width / 2, 78);
   ctx.font = '900 50px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
-  ctx.fillText(safeText(shop.addressHindi) || 'देकदार बाजार', canvas.width / 2, 142);
+  ctx.fillText(safeText(shop.addressHindi) || 'टेकटार बाजार', canvas.width / 2, 150);
   ctx.font = '900 25px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
   ctx.fillText(safeText(shop.registrationNo) || 'उद्यम रजि० नं०--BR-10-0038338', canvas.width / 2, 202);
   return canvas.toDataURL('image/png');
@@ -198,16 +198,26 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.line(74, 52, 136, 52);
 
   let y = 59;
-  setFont(doc, 'normal', 9.2);
-  doc.text('The Branch Manager', margin, y);
-  y += 4.5;
-  doc.text('State Bank Of India', margin, y);
-  doc.text(`A/c No.: ${safeText(form.bankAccount)}`, pageWidth - margin, y, { align: 'right' });
-  y += 4.5;
-  doc.text(safeText(form.branchName), margin, y);
-  y += 6;
-  doc.text('Dear Sir,', margin, y);
-  y += 5.5;
+ setFont(doc, 'normal', 9.2);
+doc.text('The Branch Manager', margin, y);
+y += 4.5;
+
+doc.text('State Bank Of India', margin, y);
+setFont(doc, 'bold', 9.2);
+doc.text(
+  `A/c No.: ${safeText(form.bankAccount)}`,
+  pageWidth - margin,
+  y,
+  { align: 'right' },
+);
+
+setFont(doc, 'normal', 9.2);
+y += 4.5;
+
+doc.text(safeText(form.branchName), margin, y);
+y += 6;
+doc.text('Dear Sir,', margin, y);
+y += 5.5;
 
   y = drawRichWrapped(doc, [
     { text: 'I hereby certify that Sri/Smt.' },
@@ -316,17 +326,39 @@ export async function generateCertificatePdf(data, options = {}) {
   ], margin, y, contentWidth, 4.0, 9.2) + 2;
 
   const bottomY = Math.max(y + 6, 252);
-  setFont(doc, 'normal', 11.5);
-  doc.text(`Place: ${safeText(form.place)}`, margin + 2, bottomY);
-  doc.text(`Date: ${dateText(form.signatureDate)}`, margin + 2, bottomY + 6.5);
-  setFont(doc, 'normal', 11.5);
-  doc.text('Yours faithfully', pageWidth - margin - 2, bottomY, { align: 'right' });
-  setFont(doc, 'bold', 11.2);
-  doc.text('Name & Signature of the Appraiser', pageWidth - margin - 2, bottomY + 13, { align: 'right' });
-  doc.text('Name & Signature of the Borrower', margin + 2, bottomY + 22);
+setFont(doc, 'normal', 11.5);
+doc.text('Yours faithfully', pageWidth - margin - 2, bottomY+3, { align: 'right' });
 
-  setFont(doc, 'normal', 9.2);
-  doc.text(safeText(shop.footerCredit), pageWidth - margin - 2, pageHeight - 11, { align: 'right' });
+setFont(doc, 'bold', 11.2);
+doc.text(
+  'Name & Signature of the Appraiser',
+  pageWidth - margin - 2,
+  bottomY + 13,
+  { align: 'right' },
+);
+
+setFont(doc, 'normal', 9.2);
+doc.text(
+  `A/c No.: ${safeText(shop.appraiserAccount)}`,
+  pageWidth - margin - 2,
+  bottomY + 28,
+  { align: 'right' },
+);
+
+setFont(doc, 'bold', 11.2);
+doc.text(
+  'Name & Signature of the Borrower',
+  margin + 2,
+  bottomY + 12,
+);
+
+setFont(doc, 'normal', 9.2);
+doc.text(
+  safeText(shop.footerCredit),
+  pageWidth - margin - 2,
+  pageHeight - 11,
+  { align: 'right' },
+);
 
   const filenameName = safeText(form.borrowerName).replace(/\s+/g, '_') || 'Borrower';
   const filenameDate = safeText(form.date) || new Date().toISOString().slice(0, 10);
