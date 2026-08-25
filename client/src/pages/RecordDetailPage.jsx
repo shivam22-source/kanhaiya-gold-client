@@ -79,10 +79,10 @@ function RecordDetailPage() {
   }
 
   async function handleDelete() {
-    if (!record) return;
+    if (!record?.isLatest) return;
 
     const confirmed = window.confirm(
-      `Delete certificate ${record.refNo || ''} for ${record.borrowerName}?\n\nIf this is the latest KJ serial, the next serial will reuse that number.`,
+      `Delete latest certificate ${record.refNo || ''} for ${record.borrowerName}?\n\nOnly the latest certificate can be deleted. The next serial will reuse this number.`,
     );
     if (!confirmed) return;
 
@@ -93,10 +93,7 @@ function RecordDetailPage() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || 'Delete failed');
 
-      const reuseMessage = result.deletedWasLatest && result.nextRefNo
-        ? ` Next serial will be ${result.nextRefNo}.`
-        : '';
-      setPdfStatus(`Certificate deleted.${reuseMessage}`);
+      setPdfStatus(`Certificate deleted. Next serial will be ${result.nextRefNo}.`);
       navigate('/records');
     } catch (deleteError) {
       setPdfStatus(`Delete failed: ${deleteError.message}`);
@@ -146,13 +143,15 @@ function RecordDetailPage() {
             >
               Regenerate PDF
             </button>
-            <button
-              className="h-11 rounded border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:opacity-60"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? 'Deleting...' : 'Delete Record'}
-            </button>
+            {record.isLatest && (
+              <button
+                className="h-11 rounded border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:opacity-60"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete Latest Record'}
+              </button>
+            )}
           </div>
         </div>
       </header>
