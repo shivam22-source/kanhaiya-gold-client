@@ -137,19 +137,20 @@ function findInputByLabel(regex) {
   return label?.querySelector('input') || null;
 }
 
-function installBranchCashInChargePatch({ retries = 30 } = {}) {
+function installBranchCashInChargePatch() {
   if (window.__kanhaiyaBranchCicPatchApplied) return;
   window.__kanhaiyaBranchCicPatchApplied = true;
 
-  let branchInput = null;
-  let cicInput = null;
-  let wired = false;
-
   function tryWire() {
-    branchInput = branchInput || findInputByLabel(/branch\s*name/i);
-    cicInput = cicInput || findInputByLabel(/cash[\s-]*in[\s-]*charge/i);
-    if (!branchInput || !cicInput || wired) return wired;
-    wired = true;
+    const branchInput = findInputByLabel(/branch\s*name/i);
+    const cicInput = findInputByLabel(/cash[\s-]*in[\s-]*charge/i);
+
+    if (!branchInput || !cicInput) return false;
+
+    // Avoid double-binding if these exact elements are already wired
+    if (branchInput.__cicWired) return true;
+    branchInput.__cicWired = true;
+    cicInput.__cicWired = true;
 
     branchInput.addEventListener('blur', () => {
       if (String(cicInput.value || '').trim()) return;
@@ -165,11 +166,16 @@ function installBranchCashInChargePatch({ retries = 30 } = {}) {
     return true;
   }
 
-  let attempts = 0;
-  const interval = setInterval(() => {
-    attempts += 1;
-    if (tryWire() || attempts >= retries) clearInterval(interval);
-  }, 250);
+  // Try immediately in case fields are already present
+  tryWire();
+
+  // Keep watching indefinitely — self-heals if the form re-renders
+  // (wizard steps mounting/unmounting, route changes, etc.)
+  const observer = new MutationObserver(() => {
+    tryWire();
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
 
   window.addEventListener('load', tryWire);
 }
