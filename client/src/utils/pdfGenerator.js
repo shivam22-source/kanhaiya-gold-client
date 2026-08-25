@@ -34,7 +34,7 @@ function drawWrapped(doc, text, x, y, width, lineHeight = 4.0, size = 9.2) {
   return y + lines.length * lineHeight;
 }
 
-function drawRichWrapped(doc, segments, x, y, width, lineHeight = 4.0, size = 9.2) {
+function drawRichWrapped(doc, segments, x, y, width, lineHeight = 4.4, size = 10) {
   let cursorX = x;
   let cursorY = y;
   const maxX = x + width;
@@ -75,64 +75,84 @@ function drawLeftCellText(doc, text, x, y, height, style = 'normal', size = 8.2)
   doc.text(String(text), x + 2, y + height / 2 + 1.0);
 }
 
+/**
+ * Summary block now wraps purity columns onto extra rows instead of
+ * squeezing everything into one row. A minimum column width keeps
+ * "22 Ct" / "150.03 gm" from overlapping or wrapping into the row above/below.
+ */
 function drawSummaryBlock(doc, y, summaries, totals) {
   const x = margin;
   const w = contentWidth;
-  const rows = { amount: 8, label: 5, purity: 6, value: 6 };
-  const totalHeight = rows.amount + rows.label + rows.purity + rows.value + rows.label + rows.purity + rows.value;
+  const rowH = { amount: 9, label: 6, purity: 7, value: 7 };
+
+  const summaryCount = Math.max(summaries.length, 1);
+  const minColWidth = 26; // mm — safe minimum so text never overlaps/wraps oddly
+  const maxColsPerRow = Math.max(1, Math.min(summaryCount, Math.floor(w / minColWidth)));
+  const numChunkRows = Math.ceil(summaryCount / maxColsPerRow);
+  const colWidth = w / maxColsPerRow;
+  const cellFontSize = maxColsPerRow >= 6 ? 7.0 : maxColsPerRow >= 4 ? 7.6 : 8.0;
+
+  const sectionHeight = rowH.label + numChunkRows * (rowH.purity + rowH.value);
+  const totalHeight = rowH.amount + sectionHeight * 2;
+
   const amountLabelW = 42;
   const roundLabelW = 28;
   const amountValueW = 29;
   const wordsW = w - amountLabelW - roundLabelW - amountValueW;
-  const summaryCount = Math.max(summaries.length, 1);
-  const summaryW = w / summaryCount;
-  const lineYs = [
-    y,
-    y + rows.amount,
-    y + rows.amount + rows.label,
-    y + rows.amount + rows.label + rows.purity,
-    y + rows.amount + rows.label + rows.purity + rows.value,
-    y + rows.amount + rows.label + rows.purity + rows.value + rows.label,
-    y + rows.amount + rows.label + rows.purity + rows.value + rows.label + rows.purity,
-    y + totalHeight,
-  ];
 
   doc.setDrawColor(20);
   doc.setLineWidth(0.18);
   doc.rect(x, y, w, totalHeight);
-  lineYs.slice(1, -1).forEach((lineY) => doc.line(x, lineY, x + w, lineY));
-  doc.line(x + amountLabelW, y, x + amountLabelW, y + rows.amount);
-  doc.line(x + amountLabelW + wordsW, y, x + amountLabelW + wordsW, y + rows.amount);
-  doc.line(x + amountLabelW + wordsW + roundLabelW, y, x + amountLabelW + wordsW + roundLabelW, y + rows.amount);
 
-  const grossPurityY = lineYs[2];
-  const grossValueY = lineYs[3];
-  const netPurityY = lineYs[5];
-  const netValueY = lineYs[6];
-  for (let index = 1; index < summaryCount; index += 1) {
-    const lineX = x + summaryW * index;
-    doc.line(lineX, grossPurityY, lineX, grossValueY + rows.value);
-    doc.line(lineX, netPurityY, lineX, netValueY + rows.value);
+  doc.line(x + amountLabelW, y, x + amountLabelW, y + rowH.amount);
+  doc.line(x + amountLabelW + wordsW, y, x + amountLabelW + wordsW, y + rowH.amount);
+  doc.line(x + amountLabelW + wordsW + roundLabelW, y, x + amountLabelW + wordsW + roundLabelW, y + rowH.amount);
+
+  drawLeftCellText(doc, 'Amount (In Words)', x, y, rowH.amount, 'bold', 8.5);
+  drawCenteredCellText(doc, numberToWordsIndian(totals.marketValue), x + amountLabelW, y, wordsW, rowH.amount, 'normal', 8.5);
+  drawCenteredCellText(doc, 'Round Up', x + amountLabelW + wordsW, y, roundLabelW, rowH.amount, 'bold', 8.5);
+  drawCenteredCellText(doc, formatMoney(totals.marketValue), x + amountLabelW + wordsW + roundLabelW, y, amountValueW, rowH.amount, 'bold', 8.5);
+
+  doc.line(x, y + rowH.amount, x + w, y + rowH.amount);
+
+  function drawSection(label, sectionY, valueGetter) {
+    drawLeftCellText(doc, label, x, sectionY, rowH.label, 'bold', 8.0);
+    doc.line(x, sectionY + rowH.label, x + w, sectionY + rowH.label);
+
+    let rowY = sectionY + rowH.label;
+    for (let r = 0; r < numChunkRows; r += 1) {
+      const purityY = rowY;
+      const valueY = rowY + rowH.purity;
+      const startIdx = r * maxColsPerRow;
+      const endIdx = Math.min(startIdx + maxColsPerRow, summaryCount);
+      const colsInRow = endIdx - startIdx;
+
+      for (let i = startIdx; i < endIdx; i += 1) {
+        const col = i - startIdx;
+        const cellX = x + colWidth * col;
+        const summary = summaries[i];
+        if (!summary) continue;
+        drawCenteredCellText(doc, `${purityText(summary.purity)} Ct`, cellX, purityY, colWidth, rowH.purity, 'normal', cellFontSize);
+        drawCenteredCellText(doc, valueGetter(summary), cellX, valueY, colWidth, rowH.value, 'normal', cellFontSize);
+      }
+
+      for (let c = 1; c < colsInRow; c += 1) {
+        const lineX = x + colWidth * c;
+        doc.line(lineX, purityY, lineX, valueY + rowH.value);
+      }
+
+      doc.line(x, valueY, x + w, valueY);
+      rowY += rowH.purity + rowH.value;
+      if (r < numChunkRows - 1) doc.line(x, rowY, x + w, rowY);
+    }
+    return rowY;
   }
 
-  drawLeftCellText(doc, 'Amount (In Words)', x, y, rows.amount, 'bold', 8.0);
-  drawCenteredCellText(doc, numberToWordsIndian(totals.marketValue), x + amountLabelW, y, wordsW, rows.amount, 'normal', 8.0);
-  drawCenteredCellText(doc, 'Round Up', x + amountLabelW + wordsW, y, roundLabelW, rows.amount, 'bold', 8.0);
-  drawCenteredCellText(doc, formatMoney(totals.marketValue), x + amountLabelW + wordsW + roundLabelW, y, amountValueW, rows.amount, 'bold', 8.0);
+  let sectionY = y + rowH.amount;
+  sectionY = drawSection('Gross Weight Carat Summary:', sectionY, (s) => `${formatWeight(s.grossWeight)} gm`);
+  doc.line(x, sectionY, x + w, sectionY);
+  drawSection('Net weight summary :', sectionY, (s) => `${formatWeight(s.netWeight)} gm`);
 
-  drawLeftCellText(doc, 'Gross Weight Carat Summary:', x, lineYs[1], rows.label, 'bold', 8.0);
-  summaries.forEach((summary, index) => {
-    const cellX = x + summaryW * index;
-    drawCenteredCellText(doc, `${purityText(summary.purity)} Ct`, cellX, grossPurityY, summaryW, rows.purity, 'normal', 8.0);
-    drawCenteredCellText(doc, `${formatWeight(summary.grossWeight)} gm`, cellX, grossValueY, summaryW, rows.value, 'normal', 8.0);
-  });
-
-  drawLeftCellText(doc, 'Net weight summary :', x, lineYs[4], rows.label, 'bold', 8.0);
-  summaries.forEach((summary, index) => {
-    const cellX = x + summaryW * index;
-    drawCenteredCellText(doc, `${purityText(summary.purity)} Ct`, cellX, netPurityY, summaryW, rows.purity, 'normal', 8.0);
-    drawCenteredCellText(doc, `${formatWeight(summary.netWeight)} gm`, cellX, netValueY, summaryW, rows.value, 'normal', 8.0);
-  });
   return y + totalHeight;
 }
 
@@ -146,11 +166,11 @@ function createShopHeaderImage(shop) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = '900 92px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
-  ctx.fillText(safeText(shop.nameHindi) || 'कन्हैया ज्वेलर्स', canvas.width / 2, 78);
+  ctx.fillText(safeText(shop.nameHindi) || 'कन्हैया ज्वेलर्स', canvas.width / 2, 72);
   ctx.font = '900 50px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
-  ctx.fillText(safeText(shop.addressHindi) || 'टेकटार बाजार', canvas.width / 2, 150);
+  ctx.fillText(safeText(shop.addressHindi) || 'टेकटार बाजार', canvas.width / 2, 145);
   ctx.font = '900 25px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
-  ctx.fillText(safeText(shop.registrationNo) || 'उद्यम रजि० नं०--BR-10-0038338', canvas.width / 2, 202);
+  ctx.fillText(safeText(shop.registrationNo) || 'उद्यम रजि० नं०--BR-10-0038338', canvas.width / 2, 205);
   return canvas.toDataURL('image/png');
 }
 
@@ -198,26 +218,26 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.line(74, 52, 136, 52);
 
   let y = 59;
- setFont(doc, 'normal', 9.2);
-doc.text('The Branch Manager', margin, y);
-y += 4.5;
+  setFont(doc, 'normal', 9.2);
+  doc.text('The Branch Manager', margin, y);
+  y += 4.5;
 
-doc.text('State Bank Of India', margin, y);
-setFont(doc, 'bold', 9.2);
-doc.text(
-  `A/c No.: ${safeText(form.bankAccount)}`,
-  pageWidth - margin,
-  y,
-  { align: 'right' },
-);
+  doc.text('State Bank Of India', margin, y);
+  setFont(doc, 'bold', 9.2);
+  doc.text(
+    `A/c No.: ${safeText(form.bankAccount)}`,
+    pageWidth - margin,
+    y,
+    { align: 'right' },
+  );
 
-setFont(doc, 'normal', 9.2);
-y += 4.5;
+  setFont(doc, 'normal', 9.2);
+  y += 4.5;
 
-doc.text(safeText(form.branchName), margin, y);
-y += 6;
-doc.text('Dear Sir,', margin, y);
-y += 5.5;
+  doc.text(safeText(form.branchName), margin, y);
+  y += 6;
+  doc.text('Dear Sir,', margin, y);
+  y += 5.5;
 
   y = drawRichWrapped(doc, [
     { text: 'I hereby certify that Sri/Smt.' },
@@ -231,7 +251,15 @@ y += 5.5;
     { text: ' in the presence of Sri/Smt.' },
     { text: ` ${safeText(form.cashInCharge)}`, bold: true },
     { text: ' (Cash in charge) and the exact weight, purity and market value are indicated below:' },
-  ], margin, y, contentWidth, 4.0, 9.2) + 1.5;
+  ], margin, y, contentWidth, 4.0, 9.2);
+
+  const dataRowCount = rows.length;
+  const bodyMinHeight = dataRowCount <= 2 ? 11 : dataRowCount <= 4 ? 8.5 : dataRowCount <= 7 ? 7 : 6.2;
+  const preTableGap = dataRowCount <= 2 ? 6 : dataRowCount <= 4 ? 3.5 : 1.5;
+  const postTableGap = dataRowCount <= 2 ? 7 : dataRowCount <= 4 ? 5 : 3;
+  const postSummaryGap = dataRowCount <= 2 ? 8 : dataRowCount <= 4 ? 6 : 4;
+
+  y += preTableGap;
 
   const head = [[
     'Sl No.',
@@ -293,11 +321,11 @@ y += 5.5;
     tableWidth: contentWidth,
     styles: {
       font: 'times',
-      fontSize: 7.5,
+      fontSize: 8.7,
       textColor: 20,
       lineColor: 25,
       lineWidth: 0.12,
-      cellPadding: { top: 1.0, right: 1.1, bottom: 1.0, left: 1.1 },
+      cellPadding: { top: 1.2, right: 1.2, bottom: 1.2, left: 1.2 },
       valign: 'middle',
       overflow: 'linebreak',
     },
@@ -306,11 +334,11 @@ y += 5.5;
       textColor: 20,
       fontStyle: 'bold',
       halign: 'center',
-      minCellHeight: 13,
+      minCellHeight: 15,
     },
     bodyStyles: {
       fillColor: [255, 255, 255],
-      minCellHeight: 4.6,
+      minCellHeight: bodyMinHeight,
     },
     columnStyles,
     didParseCell: (hookData) => {
@@ -318,47 +346,49 @@ y += 5.5;
     },
   });
 
-  y = drawSummaryBlock(doc, doc.lastAutoTable.finalY + 3, summaries, totals) + 4;
+  y = drawSummaryBlock(doc, doc.lastAutoTable.finalY + postTableGap, summaries, totals) + postSummaryGap;
 
   y = drawRichWrapped(doc, [
     { text: 'Method used for purity testing: ', bold: true },
     { text: 'I solemnly declare that weight, purity of the gold ornaments/precious stones indicated above are correct and I undertake to indemnify the Bank against any loss it may sustain on account of any inaccuracy in the above appraisal.' },
   ], margin, y, contentWidth, 4.0, 9.2) + 2;
 
-  const bottomY = Math.max(y + 6, 252);
-setFont(doc, 'normal', 11.5);
-doc.text('Yours faithfully', pageWidth - margin - 2, bottomY+3, { align: 'right' });
+  // Signature block anchors near the bottom of the page but never overlaps
+  // content above it, even when many rows/purities push y down.
+  const bottomY = Math.min(Math.max(y + 10, 235), 250);
+  setFont(doc, 'normal', 11.5);
+  doc.text('Yours faithfully', pageWidth - margin - 2, bottomY + 3, { align: 'right' });
 
-setFont(doc, 'bold', 11.2);
-doc.text(
-  'Name & Signature of the Appraiser',
-  pageWidth - margin - 2,
-  bottomY + 13,
-  { align: 'right' },
-);
+  setFont(doc, 'bold', 11.2);
+  doc.text(
+    'Name & Signature of the Appraiser',
+    pageWidth - margin - 2,
+    bottomY + 13,
+    { align: 'right' },
+  );
 
-setFont(doc, 'normal', 9.2);
-doc.text(
-  `A/c No.: ${safeText(shop.appraiserAccount)}`,
-  pageWidth - margin - 2,
-  bottomY + 28,
-  { align: 'right' },
-);
+  setFont(doc, 'normal', 9.2);
+  doc.text(
+    `A/c No.: ${safeText(shop.appraiserAccount)}`,
+    pageWidth - margin - 2,
+    bottomY + 28,
+    { align: 'right' },
+  );
 
-setFont(doc, 'bold', 11.2);
-doc.text(
-  'Name & Signature of the Borrower',
-  margin + 2,
-  bottomY + 12,
-);
+  setFont(doc, 'bold', 11.2);
+  doc.text(
+    'Name & Signature of the Borrower',
+    margin + 2,
+    bottomY + 12,
+  );
 
-setFont(doc, 'normal', 9.2);
-doc.text(
-  safeText(shop.footerCredit),
-  pageWidth - margin - 2,
-  pageHeight - 11,
-  { align: 'right' },
-);
+  setFont(doc, 'normal', 9.2);
+  doc.text(
+    safeText(shop.footerCredit),
+    pageWidth - margin - 2,
+    pageHeight - 11,
+    { align: 'right' },
+  );
 
   const filenameName = safeText(form.borrowerName).replace(/\s+/g, '_') || 'Borrower';
   const filenameDate = safeText(form.date) || new Date().toISOString().slice(0, 10);
