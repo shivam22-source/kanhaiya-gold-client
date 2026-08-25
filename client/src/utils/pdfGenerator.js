@@ -273,7 +273,9 @@ export async function generateCertificatePdf(data, options = {}) {
     'Market Value\n(Rs.)',
   ]];
 
-  const body = rows.map((row, index) => [
+  const tableRows = rows.slice(0, 8);
+
+  const body = tableRows.map((row, index) => [
     index + 1,
     row.description,
     row.units,

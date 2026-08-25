@@ -207,9 +207,12 @@ function MobileDashboard() {
   }
 
   function addRow() {
-    setRows((current) => [...current, freshRow()]);
-    goToStep(1);
-  }
+  setRows((current) => {
+    if (current.length >= 8) return current;
+    return [...current, freshRow()];
+  });
+  goToStep(1);
+}
 
   function deleteRow(id) {
     setRows((current) => current.length > 1 ? current.filter((row) => row.id !== id) : current);
