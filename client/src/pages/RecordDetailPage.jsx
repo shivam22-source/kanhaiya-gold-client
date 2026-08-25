@@ -41,6 +41,7 @@ function RecordDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pdfStatus, setPdfStatus] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +75,33 @@ function RecordDetailPage() {
       setPdfStatus('PDF downloaded.');
     } catch (pdfError) {
       setPdfStatus(`Failed to generate PDF: ${pdfError.message}`);
+    }
+  }
+
+  async function handleDelete() {
+    if (!record) return;
+
+    const confirmed = window.confirm(
+      `Delete certificate ${record.refNo || ''} for ${record.borrowerName}?\n\nIf this is the latest KJ serial, the next serial will reuse that number.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+      setPdfStatus('Deleting certificate...');
+      const response = await fetch(`${API_BASE}/certificates/${record.id}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || 'Delete failed');
+
+      const reuseMessage = result.deletedWasLatest && result.nextRefNo
+        ? ` Next serial will be ${result.nextRefNo}.`
+        : '';
+      setPdfStatus(`Certificate deleted.${reuseMessage}`);
+      navigate('/records');
+    } catch (deleteError) {
+      setPdfStatus(`Delete failed: ${deleteError.message}`);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -112,10 +140,18 @@ function RecordDetailPage() {
           </div>
           <div className="grid grid-cols-1 gap-2 sm:flex">
             <button
-              className="h-11 rounded bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              className="h-11 rounded bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-60"
               onClick={handleRegenerate}
+              disabled={deleting}
             >
               Regenerate PDF
+            </button>
+            <button
+              className="h-11 rounded border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:opacity-60"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? 'Deleting...' : 'Delete Record'}
             </button>
           </div>
         </div>
