@@ -86,37 +86,7 @@ function getAppraiserAccount() {
   }
 }
 
-function installPdfAccountPatch() {
-  if (window[PDF_PATCH_FLAG]) return;
-  window[PDF_PATCH_FLAG] = true;
 
-  const originalText = jsPDF.prototype.text;
-  jsPDF.prototype.text = function patchedText(text, ...args) {
-    const result = originalText.call(this, text, ...args);
-
-    if (String(text || '').trim() === 'Name & Signature of the Appraiser') {
-      const x = args[0];
-      const y = args[1];
-      const options = args[2] || {};
-      const account = getAppraiserAccount();
-      if (account) {
-        const previousFont = this.getFont?.();
-        const previousSize = this.getFontSize?.();
-        this.setFont('times', 'normal');
-        this.setFontSize(9.2);
-        this.text(`A/c No.: ${account}`, x, Number(y) + 20, { align: options.align || 'right' });
-        if (previousFont?.fontName && previousFont?.fontStyle) {
-          this.setFont(previousFont.fontName, previousFont.fontStyle);
-        } else {
-          this.setFont('times', 'bold');
-        }
-        if (previousSize) this.setFontSize(previousSize);
-      }
-    }
-
-    return result;
-  };
-}
 
 installSerialPatch();
-installPdfAccountPatch();
+

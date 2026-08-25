@@ -90,7 +90,7 @@ function drawSummaryBlock(doc, y, summaries, totals) {
   const maxColsPerRow = Math.max(1, Math.min(summaryCount, Math.floor(w / minColWidth)));
   const numChunkRows = Math.ceil(summaryCount / maxColsPerRow);
   const colWidth = w / maxColsPerRow;
-  const cellFontSize = maxColsPerRow >= 6 ? 7.4 : maxColsPerRow >= 4 ? 8.0 : 8.4;
+  const cellFontSize = maxColsPerRow >= 6 ? 7.4 : maxColsPerRow >= 4 ? 8.6 : 9.0;
 
   const sectionHeight = rowH.label + numChunkRows * (rowH.purity + rowH.value);
   const totalHeight = rowH.amount + sectionHeight * 2;
@@ -116,7 +116,7 @@ function drawSummaryBlock(doc, y, summaries, totals) {
   doc.line(x, y + rowH.amount, x + w, y + rowH.amount);
 
   function drawSection(label, sectionY, valueGetter) {
-    drawLeftCellText(doc, label, x, sectionY, rowH.label, 'bold', 8.0);
+    drawLeftCellText(doc, label, x, sectionY, rowH.label, 'bold', 8.8);
     doc.line(x, sectionY + rowH.label, x + w, sectionY + rowH.label);
 
     let rowY = sectionY + rowH.label;
@@ -171,6 +171,15 @@ function createShopHeaderImage(shop) {
   ctx.fillText(safeText(shop.addressHindi) || 'टेकटार बाजार', canvas.width / 2, 145);
   ctx.font = '900 25px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
   ctx.fillText(safeText(shop.registrationNo) || 'उद्यम रजि० नं०--BR-10-0038338', canvas.width / 2, 205);
+
+ctx.font = '28px Times New Roman';
+ctx.fillText('Appraiser A/c No.:', 350, 232);
+
+ctx.font = 'bold 28px Times New Roman';
+ctx.fillText(safeText(shop.appraiserAccount), 540, 232);
+
+  ctx.font = 'bold 22px Times New Roman, Arial, sans-serif';
+
   return canvas.toDataURL('image/png');
 }
 
@@ -187,7 +196,7 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.setLineWidth(0.15);
   doc.rect(4, 3, pageWidth - 8, pageHeight - 6);
 
-  setFont(doc, 'normal', 9);
+  setFont(doc, 'normal', 9.8);
   doc.text('Annexure: PL-61(i)', margin + 2, 17);
   doc.text(`Ref :- ${safeText(form.refNo) || '-----------------------------'}`, margin + 2, 29);
   doc.text(`Appraised Charge :- ${formatMoney(form.appraisalCharge) || '------------------------'}`, margin + 2, 37);
@@ -218,26 +227,43 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.line(74, 52, 136, 52);
 
   let y = 59;
-  setFont(doc, 'normal', 9.2);
+  setFont(doc, 'normal', 10);
   doc.text('The Branch Manager', margin, y);
   y += 4.5;
 
   doc.text('State Bank Of India', margin, y);
-  setFont(doc, 'bold', 9.2);
-  doc.text(
-    `A/c No.: ${safeText(form.bankAccount)}`,
-    pageWidth - margin,
-    y,
-    { align: 'right' },
-  );
+setFont(doc, 'normal', 9.2);
 
-  setFont(doc, 'normal', 9.2);
-  y += 4.5;
+const accountLabel = 'A/c No.:';
+const accountValue = safeText(form.bankAccount);
 
-  doc.text(safeText(form.branchName), margin, y);
-  y += 6;
-  doc.text('Dear Sir,', margin, y);
-  y += 5.5;
+const accountLabelWidth = doc.getTextWidth(accountLabel);
+const accountValueWidth = doc.getTextWidth(accountValue);
+const totalWidth = accountLabelWidth + 1 + accountValueWidth;
+const startX = pageWidth - margin - totalWidth;
+
+doc.text(accountLabel, startX, y);
+
+setFont(doc, 'bold', 9.2);
+doc.text(accountValue, startX + accountLabelWidth + 1, y);
+
+setFont(doc, 'bold', 10);
+
+y += 4.5;
+
+const branchName = safeText(form.branchName);
+doc.text(branchName, margin, y);
+
+const branchNameWidth = doc.getTextWidth(branchName);
+
+setFont(doc, 'normal', 9.2);
+doc.text(' branch', margin + branchNameWidth + 1, y);
+
+y += 6;
+
+doc.text('Dear Sir,', margin, y);
+
+y += 5.5;
 
   y = drawRichWrapped(doc, [
     { text: 'I hereby certify that Sri/Smt.' },
@@ -251,7 +277,7 @@ export async function generateCertificatePdf(data, options = {}) {
     { text: ' in the presence of Sri/Smt.' },
     { text: ` ${safeText(form.cashInCharge)}`, bold: true },
     { text: ' (Cash in charge) and the exact weight, purity and market value are indicated below:' },
-  ], margin, y, contentWidth, 4.2, 9.7)+2;
+  ], margin, y, contentWidth, 4.5, 10.4)+2;
 
   const dataRowCount = rows.length;
   const bodyMinHeight = dataRowCount <= 2 ? 11 : dataRowCount <= 4 ? 8.5 : dataRowCount <= 7 ? 7 : 6.2;
@@ -282,7 +308,7 @@ export async function generateCertificatePdf(data, options = {}) {
     formatWeight(row.stoneWeight),
     formatWeight(row.grossWeight),
     formatWeight(row.netWeight),
-    purityText(row.purity),
+   `${purityText(row.purity)} Ct`,
     ...customColumns.map((column) => row.customValues?.[column.id] || ''),
     formatMoney(row.marketValue),
   ]);
@@ -323,7 +349,7 @@ export async function generateCertificatePdf(data, options = {}) {
     tableWidth: contentWidth,
     styles: {
       font: 'times',
-      fontSize: 9.1,
+      fontSize: 9.5,
       textColor: 20,
       lineColor: 25,
       lineWidth: 0.12,
@@ -353,44 +379,41 @@ export async function generateCertificatePdf(data, options = {}) {
   y = drawRichWrapped(doc, [
     { text: 'Method used for purity testing: ', bold: true },
     { text: 'I solemnly declare that weight, purity of the gold ornaments/precious stones indicated above are correct and I undertake to indemnify the Bank against any loss it may sustain on account of any inaccuracy in the above appraisal.' },
-  ], margin, y, contentWidth, 4.0, 9.2) + 2;
+  ], margin, y, contentWidth, 4.5, 10.0) + 2;
 
-  // Signature block anchors near the bottom of the page but never overlaps
-  // content above it, even when many rows/purities push y down.
-  const bottomY = Math.min(Math.max(y + 10, 235), 250);
-  setFont(doc, 'bold', 11.2);
-  doc.text('Yours faithfully', pageWidth - margin - 2, bottomY + 3, { align: 'right' });
+setFont(doc, 'normal', 9.2);
 
-  setFont(doc, 'bold', 11.2);
-  doc.text(
-    'Name & Signature of the Appraiser',
-    pageWidth - margin - 2,
-    bottomY + 13,
-    { align: 'right' },
-  );
+doc.text('Place:', margin + 2, 260);
+const placeWidth = doc.getTextWidth('Place:');
 
-  setFont(doc, 'normal', 9.2);
-  doc.text(
-    `A/c No.: ${safeText(shop.appraiserAccount)}`,
-    pageWidth - margin - 2,
-    bottomY + 34,
-    { align: 'right' },
-  );
+setFont(doc, 'bold', 9.2);
+doc.text(safeText(form.place), margin + 2 + placeWidth + 1, 260);
 
-  setFont(doc, 'bold', 11.2);
-  doc.text(
-    'Name & Signature of the Borrower',
-    margin + 2,
-    bottomY + 12,
-  );
+setFont(doc, 'normal', 9.2);
 
-  setFont(doc, 'normal', 9.2);
-  doc.text(
-    safeText(shop.footerCredit),
-    pageWidth - margin - 2,
-    pageHeight - 11,
-    { align: 'right' },
-  );
+doc.text('Date:', margin + 2, 266);
+const dateWidth = doc.getTextWidth('Date:');
+
+setFont(doc, 'bold', 9.2);
+doc.text(dateText(form.signatureDate), margin + 2 + dateWidth + 1, 266);
+
+const bottomY = Math.max(y + 8, 235);
+const rightX = pageWidth - margin - 2;
+setFont(doc, 'bold', 11.2);
+doc.text('Yours faithfully', rightX, bottomY + 8, { align: 'right' });
+
+setFont(doc, 'bold', 11.2);
+doc.text('Name & Signature of the Appraiser', rightX, bottomY + 16, { align: 'right' });
+
+
+
+const footerY = pageHeight - 11;
+
+setFont(doc, 'normal', 9.2);
+doc.text(safeText(shop.footerCredit),pageWidth - margin - 2,footerY+2,{ align: 'right' },);
+
+setFont(doc, 'bold', 11.2);
+doc.text('Name & Signature of the Borrower', margin + 2, bottomY + 16);
 
   const filenameName = safeText(form.borrowerName).replace(/\s+/g, '_') || 'Borrower';
   const filenameDate = safeText(form.date) || new Date().toISOString().slice(0, 10);

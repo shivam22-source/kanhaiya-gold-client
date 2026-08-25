@@ -466,7 +466,7 @@ function MobileDashboard() {
                         <Field label="Stone Wt (gm)" type="number" value={row.stoneWeight} onChange={(v) => updateRow(row.id, 'stoneWeight', v)} />
                         <Field label="Gross Wt (gm)" type="number" value={row.grossWeight} onChange={(v) => updateRow(row.id, 'grossWeight', v)} />
                         <Field label="Net Wt (gm)" value={formatWeight(row.netWeight)} readOnly />
-                        <Field label="Market Value" type="number" value={row.marketManual || row.netWeight !== '' ? row.marketValue : ''} onChange={(v) => updateRow(row.id, 'marketValue', v)} />
+                        <Field label="Market Value" type="number" value={row.marketManual || row.netWeight !== '' ? row.marketValue : ''} readOnly />
                       </div>
                       <div className="flex items-center justify-between rounded-2xl bg-white p-3 ring-1 ring-slate-200">
                         <div>
