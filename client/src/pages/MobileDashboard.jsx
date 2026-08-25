@@ -378,7 +378,11 @@ function MobileDashboard() {
             <MobileCard title="Bank & Appraisal">
               <div className="grid gap-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Serial No. (auto)" value={form.refNo} onChange={(v) => updateForm('refNo', v)} />
+                  <Field
+  label="Serial No."
+  value={form.refNo}
+  disabled
+/>
                   <Field label="Date" type="date" value={form.date} onChange={(v) => updateForm('date', v)} />
                 </div>
                 <Field label="Bank A/c No." value={form.bankAccount} onChange={(v) => updateForm('bankAccount', v)} inputMode="numeric" />
@@ -398,15 +402,12 @@ function MobileDashboard() {
             <MobileCard title="Rate Settings" className="ring-2 ring-indigo-100">
               <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
                 <Field
-                  label="24 Ct Gold Rate / gm (Manual Market Rate)"
+                  label="24 Ct Gold Rate / gm"
                   type="number"
                   step="0.01"
                   value={baseRate24ct}
                   onChange={(value) => setBaseRate24ct(value === '' ? '' : Number(value))}
                 />
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  Enter the bank's 24 Ct market rate. All other purity rates are calculated automatically using the standard fineness percentages.
-                </p>
                 <div className="mt-4 overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
                   <table className="w-full min-w-[430px] border-collapse text-xs">
                     <thead>
@@ -461,12 +462,12 @@ function MobileDashboard() {
                       <div className="grid grid-cols-2 gap-3">
                         <Field label="Stone Wt (gm)" type="number" value={row.stoneWeight} onChange={(v) => updateRow(row.id, 'stoneWeight', v)} />
                         <Field label="Gross Wt (gm)" type="number" value={row.grossWeight} onChange={(v) => updateRow(row.id, 'grossWeight', v)} />
-                        <Field label="Net Wt (gm) - auto" value={formatWeight(row.netWeight)} readOnly />
+                        <Field label="Net Wt (gm)" value={formatWeight(row.netWeight)} readOnly />
                         <Field label="Market Value" type="number" value={row.marketManual || row.netWeight !== '' ? row.marketValue : ''} onChange={(v) => updateRow(row.id, 'marketValue', v)} />
                       </div>
                       <div className="flex items-center justify-between rounded-2xl bg-white p-3 ring-1 ring-slate-200">
                         <div>
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">Auto valuation</p>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">valuation</p>
                           <p className="mt-1 text-lg font-black text-slate-900">{row.marketManual || row.netWeight !== '' ? `₹${formatMoney(row.marketValue)}` : '—'}</p>
                         </div>
                         {row.marketManual && <button onClick={() => resetMarketValue(row.id)} className="rounded-xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">Use Auto</button>}

@@ -104,7 +104,7 @@ function installPdfAccountPatch() {
         const previousSize = this.getFontSize?.();
         this.setFont('times', 'normal');
         this.setFontSize(9.2);
-        this.text(`A/c No.: ${account}`, x, Number(y) + 7, { align: options.align || 'right' });
+        this.text(`A/c No.: ${account}`, x, Number(y) + 20, { align: options.align || 'right' });
         if (previousFont?.fontName && previousFont?.fontStyle) {
           this.setFont(previousFont.fontName, previousFont.fontStyle);
         } else {

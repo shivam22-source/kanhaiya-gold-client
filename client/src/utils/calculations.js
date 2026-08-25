@@ -42,7 +42,11 @@ export function calculateNetWeight(row) {
 }
 
 export function calculateMarketValue(row, rates) {
-  return roundMoney((Number(row.netWeight) || 0) * (Number(rates[row.purity]) || 0));
+  const units = Number(row.units) || 0;
+  const netWeight = Number(row.netWeight) || 0;
+  const rate = Number(rates[row.purity]) || 0;
+
+  return roundMoney(units * netWeight * rate);
 }
 
 export function calculateRows(rows, rates) {
