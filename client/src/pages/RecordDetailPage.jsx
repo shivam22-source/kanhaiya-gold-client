@@ -34,6 +34,11 @@ function MobileBottomNav() {
   );
 }
 
+function serialNumber(refNo) {
+  const match = String(refNo || '').match(/^KJ[-\s]?(\d+)$/i);
+  return match ? Number(match[1]) : 0;
+}
+
 function RecordDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -49,11 +54,27 @@ function RecordDetailPage() {
       try {
         setLoading(true);
         setError('');
-        const response = await fetch(`${API_BASE}/certificates/${id}`);
-        if (response.status === 404) throw new Error('Record not found');
-        if (!response.ok) throw new Error('Could not load record');
-        const result = await response.json();
-        if (!cancelled) setRecord(result);
+
+        const [recordResponse, recordsResponse] = await Promise.all([
+          fetch(`${API_BASE}/certificates/${id}`),
+          fetch(`${API_BASE}/certificates`),
+        ]);
+
+        if (recordResponse.status === 404) throw new Error('Record not found');
+        if (!recordResponse.ok) throw new Error('Could not load record');
+        if (!recordsResponse.ok) throw new Error('Could not load records');
+
+        const result = await recordResponse.json();
+        const allRecords = await recordsResponse.json();
+        const maxSerial = allRecords.reduce((max, item) => Math.max(max, serialNumber(item.refNo)), 0);
+        const currentSerial = serialNumber(result.refNo);
+
+        if (!cancelled) {
+          setRecord({
+            ...result,
+            isLatest: currentSerial > 0 && currentSerial === maxSerial,
+          });
+        }
       } catch (loadError) {
         if (!cancelled) setError(loadError.message || 'Failed to load record');
       } finally {
