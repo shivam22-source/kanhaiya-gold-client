@@ -227,7 +227,7 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.text(
     `A/c No.: ${safeText(form.bankAccount)}`,
     pageWidth - margin,
-    y,
+    y+4,
     { align: 'right' },
   );
 
