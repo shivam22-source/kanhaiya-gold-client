@@ -381,21 +381,7 @@ y += 5.5;
     { text: 'I solemnly declare that weight, purity of the gold ornaments/precious stones indicated above are correct and I undertake to indemnify the Bank against any loss it may sustain on account of any inaccuracy in the above appraisal.' },
   ], margin, y, contentWidth, 4.5, 10.0) + 2;
 
-setFont(doc, 'normal', 9.2);
 
-doc.text('Place:', margin + 2, 260);
-const placeWidth = doc.getTextWidth('Place:');
-
-setFont(doc, 'bold', 9.2);
-doc.text(safeText(form.place), margin + 2 + placeWidth + 1, 260);
-
-setFont(doc, 'normal', 9.2);
-
-doc.text('Date:', margin + 2, 266);
-const dateWidth = doc.getTextWidth('Date:');
-
-setFont(doc, 'bold', 9.2);
-doc.text(dateText(form.signatureDate), margin + 2 + dateWidth + 1, 266);
 
 const bottomY = Math.max(y + 8, 235);
 const rightX = pageWidth - margin - 2;

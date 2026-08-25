@@ -222,13 +222,7 @@ function MobileRecordsPage() {
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl">
-        <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
-          <Link to="/" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">New</Link>
-          <span className="rounded-2xl bg-indigo-50 py-2 text-center text-xs font-bold text-indigo-700">Records</span>
-          <Link to="/market-rates" className="rounded-2xl py-2 text-center text-xs font-bold text-slate-500">Market</Link>
-        </div>
-      </nav>
+    
     </main>
   );
 }
