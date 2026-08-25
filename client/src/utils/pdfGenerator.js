@@ -27,7 +27,7 @@ function setFont(doc, style = 'normal', size = 9.2) {
   doc.setFontSize(size);
 }
 
-function drawWrapped(doc, text, x, y, width, lineHeight = 4.0, size = 9.2) {
+function drawWrapped(doc, text, x, y, width, lineHeight = 4.2, size = 9.7) {
   setFont(doc, 'normal', size);
   const lines = doc.splitTextToSize(text, width);
   doc.text(lines, x, y);
@@ -63,14 +63,14 @@ function drawRichWrapped(doc, segments, x, y, width, lineHeight = 4.4, size = 10
   return cursorY + lineHeight;
 }
 
-function drawCenteredCellText(doc, text, x, y, width, height, style = 'normal', size = 8.2) {
+function drawCenteredCellText(doc, text, x, y, width, height, style = 'normal', size = 8.6) {
   setFont(doc, style, size);
   const lines = doc.splitTextToSize(String(text), width - 4);
   const startY = y + height / 2 - ((lines.length - 1) * 3.0) / 2 + 1.0;
   doc.text(lines, x + width / 2, startY, { align: 'center' });
 }
 
-function drawLeftCellText(doc, text, x, y, height, style = 'normal', size = 8.2) {
+function drawLeftCellText(doc, text, x, y, height, style = 'normal', size = 8.6) {
   setFont(doc, style, size);
   doc.text(String(text), x + 2, y + height / 2 + 1.0);
 }
@@ -90,7 +90,7 @@ function drawSummaryBlock(doc, y, summaries, totals) {
   const maxColsPerRow = Math.max(1, Math.min(summaryCount, Math.floor(w / minColWidth)));
   const numChunkRows = Math.ceil(summaryCount / maxColsPerRow);
   const colWidth = w / maxColsPerRow;
-  const cellFontSize = maxColsPerRow >= 6 ? 7.0 : maxColsPerRow >= 4 ? 7.6 : 8.0;
+  const cellFontSize = maxColsPerRow >= 6 ? 7.4 : maxColsPerRow >= 4 ? 8.0 : 8.4;
 
   const sectionHeight = rowH.label + numChunkRows * (rowH.purity + rowH.value);
   const totalHeight = rowH.amount + sectionHeight * 2;
@@ -251,7 +251,7 @@ export async function generateCertificatePdf(data, options = {}) {
     { text: ' in the presence of Sri/Smt.' },
     { text: ` ${safeText(form.cashInCharge)}`, bold: true },
     { text: ' (Cash in charge) and the exact weight, purity and market value are indicated below:' },
-  ], margin, y, contentWidth, 4.0, 9.2);
+  ], margin, y, contentWidth, 4.2, 9.7)+2;
 
   const dataRowCount = rows.length;
   const bodyMinHeight = dataRowCount <= 2 ? 11 : dataRowCount <= 4 ? 8.5 : dataRowCount <= 7 ? 7 : 6.2;
@@ -321,7 +321,7 @@ export async function generateCertificatePdf(data, options = {}) {
     tableWidth: contentWidth,
     styles: {
       font: 'times',
-      fontSize: 8.7,
+      fontSize: 9.1,
       textColor: 20,
       lineColor: 25,
       lineWidth: 0.12,
@@ -356,7 +356,7 @@ export async function generateCertificatePdf(data, options = {}) {
   // Signature block anchors near the bottom of the page but never overlaps
   // content above it, even when many rows/purities push y down.
   const bottomY = Math.min(Math.max(y + 10, 235), 250);
-  setFont(doc, 'normal', 11.5);
+  setFont(doc, 'bold', 11.2);
   doc.text('Yours faithfully', pageWidth - margin - 2, bottomY + 3, { align: 'right' });
 
   setFont(doc, 'bold', 11.2);
