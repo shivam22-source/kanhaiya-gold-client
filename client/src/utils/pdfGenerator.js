@@ -227,7 +227,7 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.text(
     `A/c No.: ${safeText(form.bankAccount)}`,
     pageWidth - margin,
-    y+4,
+    y,
     { align: 'right' },
   );
 
@@ -373,7 +373,7 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.text(
     `A/c No.: ${safeText(shop.appraiserAccount)}`,
     pageWidth - margin - 2,
-    bottomY + 28,
+    bottomY + 34,
     { align: 'right' },
   );
 
