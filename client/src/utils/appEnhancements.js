@@ -51,7 +51,7 @@ async function fillNextSerial({ force = false, retries = 12 } = {}) {
 }
 
 function installSerialPatch() {
-  if (window[SERIAL_PATCH_FLAG]) return;
+  if (window[SERIAL_PATCH_FLAG] || window.location.pathname !== '/') return;
   window[SERIAL_PATCH_FLAG] = true;
 
   const originalFetch = window.fetch.bind(window);
