@@ -228,7 +228,7 @@ panel.style.cssText =
 
     if (entries.length === 0) {
       const empty = document.createElement('p');
-      empty.textContent = 'Abhi tak koi branch save nahi hui. Neeche se add karein.';
+      empty.textContent = 'No branches have been saved yet. Add one below';
       empty.style.cssText = 'color:#777;font-size:13px;';
       list.appendChild(empty);
     }
