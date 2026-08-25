@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import MobileDashboard from './pages/MobileDashboard';
 import RecordsPage from './pages/RecordsPage';
@@ -36,6 +36,7 @@ function App() {
         <Route path="/" element={<ResponsiveDashboard />} />
         <Route path="/records" element={<ResponsiveRecords />} />
         <Route path="/records/:id" element={<RecordDetailPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <InstallPrompt />
     </>
