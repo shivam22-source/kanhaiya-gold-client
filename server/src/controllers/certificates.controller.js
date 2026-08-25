@@ -85,6 +85,64 @@ export async function getCertificate(req, res, next) {
   }
 }
 
+export async function deleteCertificate(req, res, next) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const targetResult = await client.query(
+      `SELECT id, ref_no
+       FROM certificates
+       WHERE id = $1
+       FOR UPDATE`,
+      [req.params.id],
+    );
+
+    if (!targetResult.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Certificate not found.' });
+    }
+
+    const target = targetResult.rows[0];
+    const escapedPrefix = 'KJ'.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = `^${escapedPrefix}[-\\s]?(\\d+)$`;
+
+    const latestResult = await client.query(
+      `SELECT id, ref_no, (regexp_match(ref_no, $1, 'i'))[1]::int AS serial_no
+       FROM certificates
+       WHERE ref_no ~* $1
+       ORDER BY serial_no DESC
+       LIMIT 1
+       FOR UPDATE`,
+      [pattern],
+    );
+
+    const latest = latestResult.rows[0] || null;
+    const deletedWasLatest = Boolean(latest && String(latest.id) === String(target.id));
+
+    await client.query('DELETE FROM certificates WHERE id = $1', [req.params.id]);
+
+    await client.query('COMMIT');
+
+    const nextNumber = deletedWasLatest ? Math.max(1, Number(latest.serial_no) || 1) : null;
+    return res.json({
+      deleted: true,
+      deletedRefNo: target.ref_no || null,
+      deletedWasLatest,
+      nextRefNo: nextNumber ? `KJ-${nextNumber}` : null,
+    });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Ignore rollback failures.
+    }
+    return next(error);
+  } finally {
+    client.release();
+  }
+}
+
 export async function getNextSerial(req, res, next) {
   try {
     const prefix = String(req.query.prefix || 'KJ').trim() || 'KJ';
