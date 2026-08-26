@@ -4,6 +4,7 @@ import express from 'express';
 import path from 'node:path';
 import certificatesRouter from './routes/certificates.routes.js';
 import uploadsRouter from './routes/uploads.routes.js';
+import branchCashInChargeRouter from './routes/branchCashInCharge.routes.js';
 import { initDatabase } from './db.js';
 
 const app = express();
@@ -42,6 +43,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/certificates', certificatesRouter);
 app.use('/api/uploads', uploadsRouter);
+app.use('/api/branch-cash-in-charge', branchCashInChargeRouter);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
