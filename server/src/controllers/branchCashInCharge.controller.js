@@ -1,5 +1,24 @@
 import { pool } from '../db.js';
 
+let tableReady;
+
+async function ensureBranchTable() {
+  if (!tableReady) {
+    tableReady = pool.query(`
+      CREATE TABLE IF NOT EXISTS branch_cash_in_charge (
+        branch_key TEXT PRIMARY KEY,
+        branch_name TEXT NOT NULL,
+        cash_in_charge TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `).catch((error) => {
+      tableReady = null;
+      throw error;
+    });
+  }
+  await tableReady;
+}
+
 function normalizeBranchKey(name) {
   return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -15,6 +34,7 @@ function mapRow(row) {
 
 export async function listBranchCashInCharge(req, res, next) {
   try {
+    await ensureBranchTable();
     const result = await pool.query(
       `SELECT branch_key, branch_name, cash_in_charge, updated_at
        FROM branch_cash_in_charge
@@ -28,6 +48,7 @@ export async function listBranchCashInCharge(req, res, next) {
 
 export async function upsertBranchCashInCharge(req, res, next) {
   try {
+    await ensureBranchTable();
     const branchName = String(req.body?.branchName || '').trim();
     const cashInCharge = String(req.body?.cashInCharge || '').trim();
     const branchKey = normalizeBranchKey(branchName);
@@ -55,6 +76,7 @@ export async function upsertBranchCashInCharge(req, res, next) {
 
 export async function updateBranchCashInCharge(req, res, next) {
   try {
+    await ensureBranchTable();
     const oldKey = normalizeBranchKey(req.params.branchKey);
     const branchName = String(req.body?.branchName || '').trim();
     const cashInCharge = String(req.body?.cashInCharge || '').trim();
@@ -90,6 +112,7 @@ export async function updateBranchCashInCharge(req, res, next) {
 
 export async function deleteBranchCashInCharge(req, res, next) {
   try {
+    await ensureBranchTable();
     const branchKey = normalizeBranchKey(req.params.branchKey);
     const result = await pool.query(
       'DELETE FROM branch_cash_in_charge WHERE branch_key = $1 RETURNING branch_key',
