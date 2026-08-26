@@ -11,6 +11,7 @@ function certificateRow(row) {
     payload: row.payload,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    isLatest: row.is_latest === true,
   };
 }
 
@@ -39,7 +40,7 @@ export async function createCertificate(req, res, next) {
       ],
     );
 
-    return res.status(201).json(certificateRow(result.rows[0]));
+    return res.status(201).json(certificateRow({ ...result.rows[0], is_latest: true }));
   } catch (error) {
     return next(error);
   }
@@ -73,15 +74,93 @@ export async function listCertificates(req, res, next) {
 
 export async function getCertificate(req, res, next) {
   try {
-    const result = await pool.query('SELECT * FROM certificates WHERE id = $1', [req.params.id]);
+    const result = await pool.query(
+      `SELECT c.*,
+              regexp_match(c.ref_no, '^KJ[-\\s]?(\\d+)$', 'i') AS ref_match,
+              MAX((regexp_match(c2.ref_no, '^KJ[-\\s]?(\\d+)$', 'i'))[1]::int) OVER () AS max_serial
+       FROM certificates c
+       LEFT JOIN certificates c2
+         ON c2.ref_no ~* '^KJ[-\\s]?(\\d+)$'
+       WHERE c.id = $1
+       LIMIT 1`,
+      [req.params.id],
+    );
 
     if (!result.rowCount) {
       return res.status(404).json({ message: 'Certificate not found.' });
     }
 
-    return res.json(certificateRow(result.rows[0]));
+    const row = result.rows[0];
+    const currentSerial = Number(row.ref_match?.[1]) || 0;
+    const maxSerial = Number(row.max_serial) || 0;
+    return res.json(certificateRow({ ...row, is_latest: currentSerial > 0 && currentSerial === maxSerial }));
   } catch (error) {
     return next(error);
+  }
+}
+
+export async function deleteCertificate(req, res, next) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const targetResult = await client.query(
+      `SELECT id, ref_no
+       FROM certificates
+       WHERE id = $1
+       FOR UPDATE`,
+      [req.params.id],
+    );
+
+    if (!targetResult.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Certificate not found.' });
+    }
+
+    const target = targetResult.rows[0];
+    const escapedPrefix = 'KJ'.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+    const pattern = `^${escapedPrefix}[-\\s]?(\\d+)$`;
+
+    const latestResult = await client.query(
+      `SELECT id, ref_no, (regexp_match(ref_no, $1, 'i'))[1]::int AS serial_no
+       FROM certificates
+       WHERE ref_no ~* $1
+       ORDER BY serial_no DESC
+       LIMIT 1
+       FOR UPDATE`,
+      [pattern],
+    );
+
+    const latest = latestResult.rows[0] || null;
+    const deletedWasLatest = Boolean(latest && String(latest.id) === String(target.id));
+
+    if (!deletedWasLatest) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        message: 'Only the latest certificate can be deleted.',
+        latestRefNo: latest?.ref_no || null,
+      });
+    }
+
+    await client.query('DELETE FROM certificates WHERE id = $1', [req.params.id]);
+    await client.query('COMMIT');
+
+    const nextNumber = Math.max(1, Number(latest.serial_no) || 1);
+    return res.json({
+      deleted: true,
+      deletedRefNo: target.ref_no || null,
+      deletedWasLatest: true,
+      nextRefNo: `KJ-${nextNumber}`,
+    });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Ignore rollback failures.
+    }
+    return next(error);
+  } finally {
+    client.release();
   }
 }
 

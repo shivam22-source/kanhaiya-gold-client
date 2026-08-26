@@ -34,6 +34,11 @@ function MobileBottomNav() {
   );
 }
 
+function serialNumber(refNo) {
+  const match = String(refNo || '').match(/^KJ[-\s]?(\d+)$/i);
+  return match ? Number(match[1]) : 0;
+}
+
 function RecordDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -41,6 +46,7 @@ function RecordDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pdfStatus, setPdfStatus] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,11 +54,27 @@ function RecordDetailPage() {
       try {
         setLoading(true);
         setError('');
-        const response = await fetch(`${API_BASE}/certificates/${id}`);
-        if (response.status === 404) throw new Error('Record not found');
-        if (!response.ok) throw new Error('Could not load record');
-        const result = await response.json();
-        if (!cancelled) setRecord(result);
+
+        const [recordResponse, recordsResponse] = await Promise.all([
+          fetch(`${API_BASE}/certificates/${id}`),
+          fetch(`${API_BASE}/certificates`),
+        ]);
+
+        if (recordResponse.status === 404) throw new Error('Record not found');
+        if (!recordResponse.ok) throw new Error('Could not load record');
+        if (!recordsResponse.ok) throw new Error('Could not load records');
+
+        const result = await recordResponse.json();
+        const allRecords = await recordsResponse.json();
+        const maxSerial = allRecords.reduce((max, item) => Math.max(max, serialNumber(item.refNo)), 0);
+        const currentSerial = serialNumber(result.refNo);
+
+        if (!cancelled) {
+          setRecord({
+            ...result,
+            isLatest: currentSerial > 0 && currentSerial === maxSerial,
+          });
+        }
       } catch (loadError) {
         if (!cancelled) setError(loadError.message || 'Failed to load record');
       } finally {
@@ -74,6 +96,30 @@ function RecordDetailPage() {
       setPdfStatus('PDF downloaded.');
     } catch (pdfError) {
       setPdfStatus(`Failed to generate PDF: ${pdfError.message}`);
+    }
+  }
+
+  async function handleDelete() {
+    if (!record?.isLatest) return;
+
+    const confirmed = window.confirm(
+      `Delete latest certificate ${record.refNo || ''} for ${record.borrowerName}?\n\nOnly the latest certificate can be deleted. The next serial will reuse this number.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+      setPdfStatus('Deleting certificate...');
+      const response = await fetch(`${API_BASE}/certificates/${record.id}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || 'Delete failed');
+
+      setPdfStatus(`Certificate deleted. Next serial will be ${result.nextRefNo}.`);
+      navigate('/records');
+    } catch (deleteError) {
+      setPdfStatus(`Delete failed: ${deleteError.message}`);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -112,11 +158,21 @@ function RecordDetailPage() {
           </div>
           <div className="grid grid-cols-1 gap-2 sm:flex">
             <button
-              className="h-11 rounded bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              className="h-11 rounded bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-60"
               onClick={handleRegenerate}
+              disabled={deleting}
             >
               Regenerate PDF
             </button>
+            {record.isLatest && (
+              <button
+                className="h-11 rounded border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:opacity-60"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete Latest Record'}
+              </button>
+            )}
           </div>
         </div>
       </header>
