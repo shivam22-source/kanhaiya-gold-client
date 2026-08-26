@@ -173,7 +173,7 @@ function createShopHeaderImage(shop) {
   ctx.fillText(safeText(shop.registrationNo) || 'उद्यम रजि० नं०--BR-10-0038338', canvas.width / 2, 205);
 
 ctx.font = '30px Times New Roman';
-ctx.fillText('Appraiser A/c No.:', 360, 232);
+ctx.fillText('Appraiser A/c No:', 360, 232);
 
 ctx.font = 'bold 28px Times New Roman';
 ctx.fillText(safeText(shop.appraiserAccount), 567, 232);
