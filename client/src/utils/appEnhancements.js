@@ -89,46 +89,109 @@ function getAppraiserAccount() {
 // ================== Branch → Cash-in-Charge Auto-Fill ==================
 
 const BRANCH_MAP_KEY = 'kanhaiya-branch-cashincharge-map-v1';
-
-function loadBranchMap() {
-  try {
-    const raw = localStorage.getItem(BRANCH_MAP_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveBranchMap(map) {
-  try {
-    localStorage.setItem(BRANCH_MAP_KEY, JSON.stringify(map));
-  } catch {
-    // Ignore storage failures.
-  }
-}
+let branchMapCache = null;
+let branchMapLoadPromise = null;
+let legacyMigrationPromise = null;
 
 function normalizeBranchKey(name) {
   return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function upsertBranchMapping(branchName, cashInCharge) {
-  const key = normalizeBranchKey(branchName);
-  if (!key || !String(cashInCharge || '').trim()) return;
-
-  const map = loadBranchMap();
-  map[key] = {
-    branchName: String(branchName).trim(),
-    cashInCharge: String(cashInCharge).trim(),
-    updatedAt: new Date().toISOString(),
-  };
-  saveBranchMap(map);
+async function fetchBranchMap() {
+  if (branchMapCache) return branchMapCache;
+  if (!branchMapLoadPromise) {
+    branchMapLoadPromise = window.fetch(`${API_BASE}/branch-cash-in-charge`).then(async (response) => {
+      if (!response.ok) throw new Error('Could not load branch list');
+      const rows = await response.json();
+      branchMapCache = Object.fromEntries(rows.map((row) => [row.branchKey, row]));
+      return branchMapCache;
+    }).finally(() => {
+      branchMapLoadPromise = null;
+    });
+  }
+  return branchMapLoadPromise;
 }
 
-function getCashInChargeForBranch(branchName) {
+async function saveBranchMapping(branchName, cashInCharge) {
+  const branch = String(branchName || '').trim();
+  const cash = String(cashInCharge || '').trim();
+  const branchKey = normalizeBranchKey(branch);
+  if (!branchKey || !cash) return;
+
+  const response = await window.fetch(`${API_BASE}/branch-cash-in-charge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ branchName: branch, cashInCharge: cash }),
+  });
+  if (!response.ok) throw new Error('Could not save branch mapping');
+  const row = await response.json();
+  branchMapCache = { ...(branchMapCache || {}), [row.branchKey]: row };
+  return row;
+}
+
+async function updateBranchMapping(oldKey, branchName, cashInCharge) {
+  const branch = String(branchName || '').trim();
+  const cash = String(cashInCharge || '').trim();
+  const branchKey = normalizeBranchKey(branch);
+  if (!branchKey || !cash) return;
+
+  const response = await window.fetch(`${API_BASE}/branch-cash-in-charge/${encodeURIComponent(oldKey)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ branchName: branch, cashInCharge: cash }),
+  });
+  if (!response.ok) throw new Error('Could not update branch mapping');
+  const row = await response.json();
+  const map = { ...(branchMapCache || {}) };
+  delete map[oldKey];
+  map[row.branchKey] = row;
+  branchMapCache = map;
+}
+
+async function deleteBranchMapping(branchKey) {
+  const response = await window.fetch(`${API_BASE}/branch-cash-in-charge/${encodeURIComponent(branchKey)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Could not delete branch mapping');
+  const map = { ...(branchMapCache || {}) };
+  delete map[branchKey];
+  branchMapCache = map;
+}
+
+async function migrateLegacyBranchMap() {
+  if (legacyMigrationPromise) return legacyMigrationPromise;
+  legacyMigrationPromise = (async () => {
+    try {
+      const raw = localStorage.getItem(BRANCH_MAP_KEY);
+      if (!raw) return;
+      const legacyMap = JSON.parse(raw);
+      if (!legacyMap || typeof legacyMap !== 'object') return;
+
+      await fetchBranchMap();
+      for (const entry of Object.values(legacyMap)) {
+        if (entry?.branchName && entry?.cashInCharge) {
+          await saveBranchMapping(entry.branchName, entry.cashInCharge);
+        }
+      }
+      localStorage.removeItem(BRANCH_MAP_KEY);
+    } catch {
+      // Keep the legacy cache until the database migration succeeds.
+    }
+  })().finally(() => {
+    legacyMigrationPromise = null;
+  });
+  return legacyMigrationPromise;
+}
+
+async function getCashInChargeForBranch(branchName) {
   const key = normalizeBranchKey(branchName);
   if (!key) return null;
-  const map = loadBranchMap();
-  return map[key]?.cashInCharge || null;
+  try {
+    await fetchBranchMap();
+    return branchMapCache?.[key]?.cashInCharge || null;
+  } catch {
+    return null;
+  }
 }
 
 function findInputByLabel(regex) {
@@ -141,43 +204,44 @@ function installBranchCashInChargePatch() {
   if (window.__kanhaiyaBranchCicPatchApplied) return;
   window.__kanhaiyaBranchCicPatchApplied = true;
 
-  function tryWire() {
+  void migrateLegacyBranchMap();
+
+  async function tryWire() {
     const branchInput = findInputByLabel(/branch\s*name/i);
     const cicInput = findInputByLabel(/cash[\s-]*in[\s-]*charge/i);
 
     if (!branchInput || !cicInput) return false;
 
-    // Avoid double-binding if these exact elements are already wired
     if (branchInput.__cicWired) return true;
     branchInput.__cicWired = true;
     cicInput.__cicWired = true;
 
-    branchInput.addEventListener('blur', () => {
+    branchInput.addEventListener('blur', async () => {
       if (String(cicInput.value || '').trim()) return;
-      const suggestion = getCashInChargeForBranch(branchInput.value);
+      const suggestion = await getCashInChargeForBranch(branchInput.value);
       if (suggestion) setReactInputValue(cicInput, suggestion);
     });
 
-    cicInput.addEventListener('blur', () => {
-      upsertBranchMapping(branchInput.value, cicInput.value);
+    cicInput.addEventListener('blur', async () => {
+      try {
+        await saveBranchMapping(branchInput.value, cicInput.value);
+      } catch {
+        // Keep form usable even if the branch list API is temporarily unavailable.
+      }
     });
 
     injectManageButton(branchInput);
     return true;
   }
 
-  // Try immediately in case fields are already present
   tryWire();
 
-  // Keep watching indefinitely — self-heals if the form re-renders
-  // (wizard steps mounting/unmounting, route changes, etc.)
   const observer = new MutationObserver(() => {
-    tryWire();
+    void tryWire();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-
-  window.addEventListener('load', tryWire);
+  window.addEventListener('load', () => void tryWire());
 }
 
 function injectManageButton(branchInput) {
@@ -208,8 +272,8 @@ function openManagePanel() {
     'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
 
   const panel = document.createElement('div');
-panel.style.cssText =
-  'background:#fff;border-radius:10px;padding:16px;max-width:560px;width:94%;max-height:85vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);box-sizing:border-box;';
+  panel.style.cssText =
+    'background:#fff;border-radius:10px;padding:16px;max-width:560px;width:94%;max-height:85vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);box-sizing:border-box;';
 
   const title = document.createElement('h3');
   title.textContent = 'Branch → Cash-in-Charge List';
@@ -219,102 +283,104 @@ panel.style.cssText =
   const list = document.createElement('div');
   panel.appendChild(list);
 
-  function renderList() {
-    const map = loadBranchMap();
-    const entries = Object.entries(map).sort((a, b) =>
-      a[1].branchName.localeCompare(b[1].branchName),
-    );
-    list.innerHTML = '';
+  async function renderList() {
+    list.innerHTML = '<p style="color:#777;font-size:13px;">Loading...</p>';
+    try {
+      const map = await fetchBranchMap();
+      const entries = Object.entries(map).sort((a, b) => a[1].branchName.localeCompare(b[1].branchName));
+      list.innerHTML = '';
 
-    if (entries.length === 0) {
-      const empty = document.createElement('p');
-      empty.textContent = 'No branches have been saved yet. Add one below';
-      empty.style.cssText = 'color:#777;font-size:13px;';
-      list.appendChild(empty);
+      if (entries.length === 0) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No branches have been saved yet. Add one below';
+        empty.style.cssText = 'color:#777;font-size:13px;';
+        list.appendChild(empty);
+      }
+
+      entries.forEach(([key, entry]) => {
+        const row = document.createElement('div');
+        row.style.cssText =
+          'display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0;';
+
+        const branchField = document.createElement('input');
+        branchField.value = entry.branchName;
+        branchField.placeholder = 'Branch name';
+        branchField.style.cssText =
+          'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
+
+        const cicField = document.createElement('input');
+        cicField.value = entry.cashInCharge;
+        cicField.placeholder = 'Cash-in-charge name';
+        cicField.style.cssText =
+          'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = '💾';
+        saveBtn.title = 'Save';
+        saveBtn.style.cssText = 'flex:0 0 auto;padding:6px 10px;border:none;border-radius:5px;background:#2e7d32;color:#fff;cursor:pointer;font-size:14px;';
+        saveBtn.addEventListener('click', async () => {
+          try {
+            await updateBranchMapping(key, branchField.value, cicField.value);
+            await renderList();
+          } catch {
+            alert('Could not update this branch.');
+          }
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '🗑️';
+        delBtn.title = 'Delete';
+        delBtn.style.cssText =
+          'flex:0 0 auto;padding:6px 10px;border:none;border-radius:5px;background:#c62828;color:#fff;cursor:pointer;font-size:14px;';
+        delBtn.addEventListener('click', async () => {
+          try {
+            await deleteBranchMapping(key);
+            await renderList();
+          } catch {
+            alert('Could not delete this branch.');
+          }
+        });
+
+        row.appendChild(branchField);
+        row.appendChild(cicField);
+        row.appendChild(saveBtn);
+        row.appendChild(delBtn);
+        list.appendChild(row);
+      });
+    } catch {
+      list.innerHTML = '<p style="color:#b00020;font-size:13px;">Could not load the saved branch list.</p>';
     }
-
-    entries.forEach(([key, entry]) => {
-      const row = document.createElement('div');
-      row.style.cssText =
-  'display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0;';
-
-      const branchField = document.createElement('input');
-      branchField.value = entry.branchName;
-      branchField.placeholder = 'Branch name';
-      branchField.style.cssText =
-        'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
-
-      const cicField = document.createElement('input');
-      cicField.value = entry.cashInCharge;
-      cicField.placeholder = 'Cash-in-charge name';
-      cicField.style.cssText =
-        'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
-
-      const saveBtn = document.createElement('button');
-      saveBtn.textContent = '💾';
-      saveBtn.title = 'Save';
-      saveBtn.style.cssText = 'flex:0 0 auto;padding:6px 10px;border:none;border-radius:5px;background:#2e7d32;color:#fff;cursor:pointer;font-size:14px;';
-      saveBtn.addEventListener('click', () => {
-        const map2 = loadBranchMap();
-        delete map2[key];
-        const newKey = normalizeBranchKey(branchField.value);
-        if (newKey && cicField.value.trim()) {
-          map2[newKey] = {
-            branchName: branchField.value.trim(),
-            cashInCharge: cicField.value.trim(),
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        saveBranchMap(map2);
-        renderList();
-      });
-
-      const delBtn = document.createElement('button');
-      delBtn.textContent = '🗑️';
-      delBtn.title = 'Delete';
-   delBtn.style.cssText =
-  'flex:0 0 auto;padding:6px 10px;border:none;border-radius:5px;background:#c62828;color:#fff;cursor:pointer;font-size:14px;';
-      delBtn.addEventListener('click', () => {
-        const map2 = loadBranchMap();
-        delete map2[key];
-        saveBranchMap(map2);
-        renderList();
-      });
-
-      row.appendChild(branchField);
-      row.appendChild(cicField);
-      row.appendChild(saveBtn);
-      row.appendChild(delBtn);
-      list.appendChild(row);
-    });
   }
 
-  renderList();
+  void renderList();
 
   const addRow = document.createElement('div');
-addRow.style.cssText =
-  'display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;border-top:1px solid #eee;padding-top:10px;';
+  addRow.style.cssText =
+    'display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;border-top:1px solid #eee;padding-top:10px;';
 
   const newBranch = document.createElement('input');
   newBranch.placeholder = 'New branch name';
   newBranch.style.cssText =
-   'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
+    'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
 
   const newCic = document.createElement('input');
   newCic.placeholder = 'Cash-in-charge name';
   newCic.style.cssText =
-   'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
+    'flex:1 1 120px;min-width:0;padding:6px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px;box-sizing:border-box;';
 
   const addBtn = document.createElement('button');
   addBtn.textContent = '➕ Add';
   addBtn.style.cssText =
-  'flex:1 1 100%;padding:8px 10px;border:none;border-radius:5px;background:#1565c0;color:#fff;cursor:pointer;font-size:14px;';
-  addBtn.addEventListener('click', () => {
-    if (newBranch.value.trim() && newCic.value.trim()) {
-      upsertBranchMapping(newBranch.value, newCic.value);
+    'flex:1 1 100%;padding:8px 10px;border:none;border-radius:5px;background:#1565c0;color:#fff;cursor:pointer;font-size:14px;';
+  addBtn.addEventListener('click', async () => {
+    if (!newBranch.value.trim() || !newCic.value.trim()) return;
+    try {
+      await saveBranchMapping(newBranch.value, newCic.value);
       newBranch.value = '';
       newCic.value = '';
-      renderList();
+      await renderList();
+    } catch {
+      alert('Could not save this branch.');
     }
   });
 
