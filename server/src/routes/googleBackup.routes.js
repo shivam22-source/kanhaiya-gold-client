@@ -48,9 +48,9 @@ router.get('/google/callback', async (req, res) => {
       return res.status(400).send('Invalid or expired Google OAuth state. Start authorization again.');
     }
 
-    pendingStates.delete(state);
     const createdAt = pendingStates.get(state);
-    if (createdAt && Date.now() - createdAt > 10 * 60 * 1000) {
+    pendingStates.delete(state);
+    if (Date.now() - createdAt > 10 * 60 * 1000) {
       return res.status(400).send('Google OAuth authorization expired. Start again.');
     }
 
@@ -61,13 +61,18 @@ router.get('/google/callback', async (req, res) => {
       return res.status(400).send('No refresh token returned. Start again and keep consent enabled.');
     }
 
+    const escapedToken = String(tokens.refresh_token)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+
     res.type('html').send(`<!doctype html>
 <html><head><meta charset="utf-8"><title>Google Backup Authorization</title></head>
 <body style="font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:20px;line-height:1.6">
 <h2>Google Drive authorization successful</h2>
 <p>Copy the refresh token below into the <code>GOOGLE_REFRESH_TOKEN</code> secret in GitHub Actions.</p>
 <p><strong>Do not share this token publicly.</strong></p>
-<textarea readonly style="width:100%;min-height:120px;padding:12px">${String(tokens.refresh_token).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</textarea>
+<textarea readonly style="width:100%;min-height:120px;padding:12px">${escapedToken}</textarea>
 </body></html>`);
   } catch (error) {
     console.error('Google backup OAuth callback failed:', error);
