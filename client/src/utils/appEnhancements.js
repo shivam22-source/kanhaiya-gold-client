@@ -88,7 +88,6 @@ function getAppraiserAccount() {
 
 // ================== Branch → Cash-in-Charge Auto-Fill ==================
 
-const BRANCH_MAP_KEY = 'kanhaiya-branch-cashincharge-map-v1';
 let branchMapCache = null;
 let branchMapLoadPromise = null;
 let legacyMigrationPromise = null;
@@ -123,7 +122,15 @@ async function saveBranchMapping(branchName, cashInCharge) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ branchName: branch, cashInCharge: cash }),
   });
-  if (!response.ok) throw new Error('Could not save branch mapping');
+
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    const error = new Error(result.message || 'Could not save branch mapping');
+    error.code = result.code || '';
+    error.status = response.status;
+    throw error;
+  }
+
   const row = await response.json();
   branchMapCache = { ...(branchMapCache || {}), [row.branchKey]: row };
   return row;
@@ -140,7 +147,10 @@ async function updateBranchMapping(oldKey, branchName, cashInCharge) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ branchName: branch, cashInCharge: cash }),
   });
-  if (!response.ok) throw new Error('Could not update branch mapping');
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.message || 'Could not update branch mapping');
+  }
   const row = await response.json();
   const map = { ...(branchMapCache || {}) };
   delete map[oldKey];
@@ -162,7 +172,7 @@ async function migrateLegacyBranchMap() {
   if (legacyMigrationPromise) return legacyMigrationPromise;
   legacyMigrationPromise = (async () => {
     try {
-      const raw = localStorage.getItem(BRANCH_MAP_KEY);
+      const raw = localStorage.getItem('kanhaiya-branch-cashincharge-map-v1');
       if (!raw) return;
       const legacyMap = JSON.parse(raw);
       if (!legacyMap || typeof legacyMap !== 'object') return;
@@ -170,10 +180,14 @@ async function migrateLegacyBranchMap() {
       await fetchBranchMap();
       for (const entry of Object.values(legacyMap)) {
         if (entry?.branchName && entry?.cashInCharge) {
-          await saveBranchMapping(entry.branchName, entry.cashInCharge);
+          try {
+            await saveBranchMapping(entry.branchName, entry.cashInCharge);
+          } catch (error) {
+            if (error?.code !== 'BRANCH_ALREADY_EXISTS') throw error;
+          }
         }
       }
-      localStorage.removeItem(BRANCH_MAP_KEY);
+      localStorage.removeItem('kanhaiya-branch-cashincharge-map-v1');
     } catch {
       // Keep the legacy cache until the database migration succeeds.
     }
@@ -216,17 +230,35 @@ function installBranchCashInChargePatch() {
     branchInput.__cicWired = true;
     cicInput.__cicWired = true;
 
+    branchInput.addEventListener('input', () => {
+      // Clear an old auto-filled manager as soon as the branch changes.
+      if (branchInput.__autoFilledCashInCharge) {
+        setReactInputValue(cicInput, '');
+        cicInput.__autoFilledCashInCharge = false;
+      }
+    });
+
     branchInput.addEventListener('blur', async () => {
-      if (String(cicInput.value || '').trim()) return;
-      const suggestion = await getCashInChargeForBranch(branchInput.value);
-      if (suggestion) setReactInputValue(cicInput, suggestion);
+      const branchName = String(branchInput.value || '').trim();
+      if (!branchName) {
+        setReactInputValue(cicInput, '');
+        cicInput.__autoFilledCashInCharge = false;
+        return;
+      }
+
+      const suggestion = await getCashInChargeForBranch(branchName);
+      if (suggestion) {
+        setReactInputValue(cicInput, suggestion);
+        cicInput.__autoFilledCashInCharge = true;
+      }
     });
 
     cicInput.addEventListener('blur', async () => {
       try {
         await saveBranchMapping(branchInput.value, cicInput.value);
+        cicInput.__autoFilledCashInCharge = false;
       } catch {
-        // Keep form usable even if the branch list API is temporarily unavailable.
+        // Keep form usable; an existing branch must be changed from the Manage list.
       }
     });
 
@@ -322,8 +354,8 @@ function openManagePanel() {
           try {
             await updateBranchMapping(key, branchField.value, cicField.value);
             await renderList();
-          } catch {
-            alert('Could not update this branch.');
+          } catch (error) {
+            alert(error.message || 'Could not update this branch.');
           }
         });
 
@@ -379,8 +411,8 @@ function openManagePanel() {
       newBranch.value = '';
       newCic.value = '';
       await renderList();
-    } catch {
-      alert('Could not save this branch.');
+    } catch (error) {
+      alert(error.message || 'Could not save this branch.');
     }
   });
 
