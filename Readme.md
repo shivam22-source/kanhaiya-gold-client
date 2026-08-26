@@ -1,5 +1,7 @@
 # SBI Gold Appraiser Certificate
 
+[![Kanhaiya Gold Backup](https://github.com/shivam22-source/kanhaiya-gold-client/actions/workflows/backup.yml/badge.svg)](https://github.com/shivam22-source/kanhaiya-gold-client/actions/workflows/backup.yml)
+
 A web application for creating, saving, searching, and regenerating SBI gold-loan appraiser certificates (Annexure PL-61(i)).
 
 ## Live deployment architecture
@@ -91,6 +93,12 @@ VITE_API_URL=https://YOUR-RENDER-SERVICE.onrender.com/api
 ```
 
 Every push to `main` can then produce a new deployed frontend build through Vercel's Git integration.
+
+## Automated backup
+
+The GitHub Actions workflow `Kanhaiya Gold Backup` backs up the production PostgreSQL database to the dedicated Google Drive account. Database backups run daily; Cloudinary image backups run weekly and can also be triggered manually from GitHub Actions.
+
+Backup credentials are stored only as GitHub Actions/Render environment secrets and are never committed to the repository.
 
 ## Important production notes
 
