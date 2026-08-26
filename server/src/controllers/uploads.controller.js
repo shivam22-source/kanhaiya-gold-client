@@ -14,6 +14,15 @@ async function uploadToCloudinary(file) {
         resource_type: 'image',
         use_filename: false,
         unique_filename: true,
+        transformation: [
+          {
+            width: 1400,
+            height: 1400,
+            crop: 'limit',
+            quality: 'auto:good',
+            format: 'jpg',
+          },
+        ],
       },
       (error, result) => {
         if (error) {
