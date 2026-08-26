@@ -5,6 +5,7 @@ import MobileDashboard from './pages/MobileDashboard';
 import RecordsPage from './pages/RecordsPage';
 import MobileRecordsPage from './pages/MobileRecordsPage';
 import RecordDetailPage from './pages/RecordDetailPage';
+import DueSettlementPage from './pages/DueSettlementPage';
 import InstallPrompt from './components/InstallPrompt';
 
 function useIsMobile() {
@@ -36,6 +37,7 @@ function App() {
         <Route path="/" element={<ResponsiveDashboard />} />
         <Route path="/records" element={<ResponsiveRecords />} />
         <Route path="/records/:id" element={<RecordDetailPage />} />
+        <Route path="/dues" element={<DueSettlementPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <InstallPrompt />
