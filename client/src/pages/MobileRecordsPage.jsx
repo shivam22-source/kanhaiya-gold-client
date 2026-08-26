@@ -87,10 +87,11 @@ function MobileRecordsPage() {
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-lg font-bold text-slate-700">‹</Link>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-indigo-600">Kanhaiya Gold</p>
             <h1 className="truncate text-lg font-extrabold tracking-tight">Saved Records</h1>
           </div>
+          <Link to="/dues" className="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-extrabold text-amber-800">Due</Link>
         </div>
       </header>
 
@@ -109,58 +110,30 @@ function MobileRecordsPage() {
           <div className="mt-3 grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Date From</span>
-              <input
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-                type="date"
-                value={dateFrom}
-                onChange={(event) => setDateFrom(event.target.value)}
-              />
+              <input className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Date To</span>
-              <input
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-                type="date"
-                value={dateTo}
-                onChange={(event) => setDateTo(event.target.value)}
-              />
+              <input className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Min Value (Rs.)</span>
-              <input
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-                type="number"
-                value={minValue}
-                onChange={(event) => setMinValue(event.target.value)}
-              />
+              <input className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100" type="number" value={minValue} onChange={(event) => setMinValue(event.target.value)} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Max Value (Rs.)</span>
-              <input
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-                type="number"
-                value={maxValue}
-                onChange={(event) => setMaxValue(event.target.value)}
-              />
+              <input className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100" type="number" value={maxValue} onChange={(event) => setMaxValue(event.target.value)} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Purity</span>
-              <select
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-                value={purityFilter}
-                onChange={(event) => setPurityFilter(event.target.value)}
-              >
+              <select className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100" value={purityFilter} onChange={(event) => setPurityFilter(event.target.value)}>
                 <option value="all">All Purities</option>
                 {purityOptions.map((purity) => <option key={purity} value={purity}>{purity}</option>)}
               </select>
             </label>
             <label className="block">
               <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Sort By</span>
-              <select
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value)}
-              >
+              <select className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100" value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="value-high">Value: High to Low</option>
@@ -169,13 +142,7 @@ function MobileRecordsPage() {
             </label>
           </div>
 
-          <button
-            onClick={resetFilters}
-            disabled={!hasFilters}
-            className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Reset Filters
-          </button>
+          <button onClick={resetFilters} disabled={!hasFilters} className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Reset Filters</button>
         </section>
 
         <div className="mt-4 flex items-center justify-between px-1">
@@ -209,8 +176,9 @@ function MobileRecordsPage() {
                 ))}
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-3 gap-2">
                 <Link to={`/records/${record.id}`} className="flex h-11 items-center justify-center rounded-2xl bg-slate-900 text-xs font-bold text-white">View Details</Link>
+                <Link to={`/dues`} className="flex h-11 items-center justify-center rounded-2xl bg-amber-50 text-xs font-bold text-amber-800">Due</Link>
                 {record.itemImageUrl ? (
                   <a href={record.itemImageUrl} target="_blank" rel="noreferrer" className="flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-xs font-bold text-slate-700">Photo</a>
                 ) : (
@@ -221,8 +189,6 @@ function MobileRecordsPage() {
           ))}
         </div>
       </div>
-
-    
     </main>
   );
 }
