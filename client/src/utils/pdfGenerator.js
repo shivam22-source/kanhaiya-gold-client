@@ -172,8 +172,8 @@ function createShopHeaderImage(shop) {
   ctx.font = '900 25px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
   ctx.fillText(safeText(shop.registrationNo) || 'उद्यम रजि० नं०--BR-10-0038338', canvas.width / 2, 205);
 
-ctx.font = '28px Times New Roman';
-ctx.fillText('Appraiser A/c No.:', 350, 232);
+ctx.font = '30px Times New Roman';
+ctx.fillText('Appraiser A/c No.:', 380, 232);
 
 ctx.font = 'bold 28px Times New Roman';
 ctx.fillText(safeText(shop.appraiserAccount), 540, 232);
@@ -203,24 +203,19 @@ export async function generateCertificatePdf(data, options = {}) {
 
   const headerImage = createShopHeaderImage(shop);
   doc.addImage(headerImage, 'PNG', 63, 6, 84, 24.3);
-  doc.text(`Date :- ${dateText(form.date) || '------------------------'}`, pageWidth - margin - 36, 17);
+  doc.text(`Date :- ${dateText(form.date) || '------------------------'}`, pageWidth - margin - 30, 19);
 
-  const qrX = pageWidth - margin - 20;
-  const qrY = 20;
-  const qrSize = 24;
-  doc.setDrawColor(160);
-  doc.setLineDashPattern([1.5, 1.5], 0);
-  doc.rect(qrX, qrY, qrSize, qrSize);
-  doc.setLineDashPattern([], 0);
-  doc.setDrawColor(20);
-  if (shop.qrImage) {
-    doc.addImage(shop.qrImage, imageType(shop.qrImage), qrX + 1, qrY + 1, qrSize - 2, qrSize - 2);
-  } else {
-    setFont(doc, 'normal', 7);
-    doc.setTextColor(190);
-    doc.text('QR', qrX + qrSize / 2, qrY + qrSize / 2 + 1, { align: 'center' });
-    doc.setTextColor(20);
-  }
+ const qrX = pageWidth - margin - 26;
+const qrY = 20;
+const qrSize = 20;
+if (shop.qrImage) {
+  doc.addImage(shop.qrImage, imageType(shop.qrImage), qrX, qrY, qrSize, qrSize);
+} else {
+  setFont(doc, 'normal', 7);
+  doc.setTextColor(190);
+  doc.text('QR', qrX + qrSize / 2, qrY + qrSize / 2 + 1, { align: 'center' });
+  doc.setTextColor(20);
+}
 
   setFont(doc, 'bold', 13);
   doc.text('APPRAISER CERTIFICATE', pageWidth / 2, 50, { align: 'center' });
@@ -382,39 +377,40 @@ y += 5.5;
   ], margin, y, contentWidth, 4.5, 10.0) + 2;
 
 
-setFont(doc, 'normal', 9.2);
-
-doc.text('Place:', margin + 2, 260);
-const placeWidth = doc.getTextWidth('Place:');
-
-setFont(doc, 'bold', 9.2);
-doc.text(safeText(form.place), margin + 2 + placeWidth + 1, 260);
-
-setFont(doc, 'normal', 9.2);
-
-doc.text('Date:', margin + 2, 266);
-const dateWidth = doc.getTextWidth('Date:');
-
-setFont(doc, 'bold', 9.2);
-doc.text(dateText(form.signatureDate), margin + 2 + dateWidth + 1, 266);
-
 const bottomY = Math.max(y + 8, 235);
 const rightX = pageWidth - margin - 2;
+
+// ---- Right side: Appraiser ----
 setFont(doc, 'bold', 11.2);
 doc.text('Yours faithfully', rightX, bottomY + 8, { align: 'right' });
 
 setFont(doc, 'bold', 11.2);
 doc.text('Name & Signature of the Appraiser', rightX, bottomY + 16, { align: 'right' });
 
-
-
-const footerY = pageHeight - 11;
+// ---- Left side: Place, Date, Borrower ----
+setFont(doc, 'normal', 9.2);
+doc.text('Place:', margin + 2, bottomY + 8);
+const placeWidth = doc.getTextWidth('Place:');
+setFont(doc, 'bold', 9.2);
+doc.text(safeText(form.place), margin + 2 + placeWidth + 1, bottomY + 8);
 
 setFont(doc, 'normal', 9.2);
-doc.text(safeText(shop.footerCredit),pageWidth - margin - 2,footerY+2,{ align: 'right' },);
+doc.text('Date:', margin + 2, bottomY + 14);
+const dateWidth = doc.getTextWidth('Date:');
+setFont(doc, 'bold', 9.2);
+doc.text(dateText(form.signatureDate), margin + 2 + dateWidth + 1, bottomY + 14);
 
 setFont(doc, 'bold', 11.2);
-doc.text('Name & Signature of the Borrower', margin + 2, bottomY + 16);
+doc.text('Name & Signature of the Borrower', margin + 2, bottomY + 24);
+
+// ---- Footer credit ----
+setFont(doc, 'normal', 9.2);
+doc.text(
+  safeText(shop.footerCredit),
+  pageWidth - margin - 2,
+  Math.max(bottomY + 34, pageHeight - 11),
+  { align: 'right' },
+);
 
   const filenameName = safeText(form.borrowerName).replace(/\s+/g, '_') || 'Borrower';
   const filenameDate = safeText(form.date) || new Date().toISOString().slice(0, 10);
