@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "health": "node --check src/server.js"
+    "health": "node --check src/server.js",
+    "backup": "node scripts/backup-to-google-drive.mjs"
   },
   "dependencies": {
     "cloudinary": "^2.10.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "googleapis": "^160.0.0",
     "multer": "^2.2.0",
     "pg": "^8.23.0"
   }
