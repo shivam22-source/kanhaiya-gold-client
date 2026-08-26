@@ -32,4 +32,26 @@ export async function initDatabase() {
       to_tsvector('simple', coalesce(borrower_name, '') || ' ' || coalesce(ref_no, ''))
     );
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS certificate_dues (
+      id BIGSERIAL PRIMARY KEY,
+      certificate_id UUID NOT NULL UNIQUE
+        REFERENCES certificates(id) ON DELETE CASCADE,
+      due_amount NUMERIC(12, 2) NOT NULL DEFAULT 0
+        CHECK (due_amount >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_certificates_branch
+    ON certificates ((payload->'form'->>'branchName'));
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_certificate_dues_certificate_id
+    ON certificate_dues (certificate_id);
+  `);
 }
