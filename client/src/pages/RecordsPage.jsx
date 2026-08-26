@@ -101,12 +101,20 @@ function RecordsPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Records</p>
             <h1 className="text-xl font-bold text-slate-950 sm:text-2xl">All Appraiser Certificates</h1>
           </div>
-          <Link
-            className="flex h-11 w-fit items-center justify-center rounded bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-            to="/"
-          >
-            + New Certificate
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className="flex h-11 items-center justify-center rounded border border-slate-300 px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              to="/dues"
+            >
+              Due Settlement
+            </Link>
+            <Link
+              className="flex h-11 items-center justify-center rounded bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              to="/"
+            >
+              + New Certificate
+            </Link>
+          </div>
         </div>
       </header>
       
