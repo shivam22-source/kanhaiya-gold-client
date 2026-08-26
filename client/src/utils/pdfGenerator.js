@@ -86,7 +86,7 @@ function drawSummaryBlock(doc, y, summaries, totals) {
   const rowH = { amount: 9, label: 6, purity: 7, value: 7 };
 
   const summaryCount = Math.max(summaries.length, 1);
-  const minColWidth = 26; // mm — safe minimum so text never overlaps/wraps oddly
+  const minColWidth = 26;
   const maxColsPerRow = Math.max(1, Math.min(summaryCount, Math.floor(w / minColWidth)));
   const numChunkRows = Math.ceil(summaryCount / maxColsPerRow);
   const colWidth = w / maxColsPerRow;
@@ -172,13 +172,23 @@ function createShopHeaderImage(shop) {
   ctx.font = '900 25px "Noto Sans Devanagari", Mangal, Arial, sans-serif';
   ctx.fillText(safeText(shop.registrationNo) || 'उद्यम रजि० नं०--BR-10-0038338', canvas.width / 2, 205);
 
-ctx.font = '30px Times New Roman';
-ctx.fillText('Appraiser A/c No:', 360, 232);
+  const accountLabel = 'Appraiser A/c No:';
+  const accountValue = safeText(shop.appraiserAccount);
+  const accountGap = 8;
 
-ctx.font = 'bold 28px Times New Roman';
-ctx.fillText(safeText(shop.appraiserAccount), 567, 232);
+  ctx.font = '30px Times New Roman';
+  const labelWidth = ctx.measureText(accountLabel).width;
+  ctx.font = 'bold 28px Times New Roman';
+  const valueWidth = ctx.measureText(accountValue).width;
+  const totalWidth = labelWidth + accountGap + valueWidth;
+  const accountStartX = (canvas.width - totalWidth) / 2;
 
-  ctx.font = 'bold 22px Times New Roman, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.font = '30px Times New Roman';
+  ctx.fillText(accountLabel, accountStartX, 232);
+  ctx.font = 'bold 28px Times New Roman';
+  ctx.fillText(accountValue, accountStartX + labelWidth + accountGap, 232);
+  ctx.textAlign = 'center';
 
   return canvas.toDataURL('image/png');
 }
@@ -205,17 +215,17 @@ export async function generateCertificatePdf(data, options = {}) {
   doc.addImage(headerImage, 'PNG', 63, 6, 84, 24.3);
   doc.text(`Date :- ${dateText(form.date) || '------------------------'}`, pageWidth - margin - 30, 19);
 
- const qrX = pageWidth - margin - 26;
-const qrY = 20;
-const qrSize = 20;
-if (shop.qrImage) {
-  doc.addImage(shop.qrImage, imageType(shop.qrImage), qrX, qrY, qrSize, qrSize);
-} else {
-  setFont(doc, 'normal', 7);
-  doc.setTextColor(190);
-  doc.text('QR', qrX + qrSize / 2, qrY + qrSize / 2 + 1, { align: 'center' });
-  doc.setTextColor(20);
-}
+  const qrX = pageWidth - margin - 26;
+  const qrY = 20;
+  const qrSize = 20;
+  if (shop.qrImage) {
+    doc.addImage(shop.qrImage, imageType(shop.qrImage), qrX, qrY, qrSize, qrSize);
+  } else {
+    setFont(doc, 'normal', 7);
+    doc.setTextColor(190);
+    doc.text('QR', qrX + qrSize / 2, qrY + qrSize / 2 + 1, { align: 'center' });
+    doc.setTextColor(20);
+  }
 
   setFont(doc, 'bold', 13);
   doc.text('APPRAISER CERTIFICATE', pageWidth / 2, 50, { align: 'center' });
@@ -227,38 +237,33 @@ if (shop.qrImage) {
   y += 4.5;
 
   doc.text('State Bank Of India', margin, y);
-setFont(doc, 'normal', 9.2);
+  setFont(doc, 'normal', 9.2);
 
-const accountLabel = 'A/c No.:';
-const accountValue = safeText(form.bankAccount);
+  const accountLabel = 'A/c No.:';
+  const accountValue = safeText(form.bankAccount);
 
-const accountLabelWidth = doc.getTextWidth(accountLabel);
-const accountValueWidth = doc.getTextWidth(accountValue);
-const totalWidth = accountLabelWidth + 1 + accountValueWidth;
-const startX = pageWidth - margin - totalWidth;
+  const accountLabelWidth = doc.getTextWidth(accountLabel);
+  const accountValueWidth = doc.getTextWidth(accountValue);
+  const totalWidth = accountLabelWidth + 1 + accountValueWidth;
+  const startX = pageWidth - margin - totalWidth;
 
-doc.text(accountLabel, startX, y);
+  doc.text(accountLabel, startX, y);
 
-setFont(doc, 'bold', 9.2);
-doc.text(accountValue, startX + accountLabelWidth + 1, y);
+  setFont(doc, 'bold', 9.2);
+  doc.text(accountValue, startX + accountLabelWidth + 1, y);
 
-setFont(doc, 'bold', 10);
+  setFont(doc, 'bold', 10);
+  y += 4.5;
 
-y += 4.5;
+  const branchName = safeText(form.branchName);
+  doc.text(branchName, margin, y);
 
-const branchName = safeText(form.branchName);
-doc.text(branchName, margin, y);
-
-const branchNameWidth = doc.getTextWidth(branchName);
-
-setFont(doc, 'normal', 9.2);
-doc.text(' branch', margin + branchNameWidth + 1, y);
-
-y += 6;
-
-doc.text('Dear Sir,', margin, y);
-
-y += 5.5;
+  const branchNameWidth = doc.getTextWidth(branchName);
+  setFont(doc, 'normal', 9.2);
+  doc.text(' branch', margin + branchNameWidth + 1, y);
+  y += 6;
+  doc.text('Dear Sir,', margin, y);
+  y += 5.5;
 
   y = drawRichWrapped(doc, [
     { text: 'I hereby certify that Sri/Smt.' },
@@ -272,7 +277,7 @@ y += 5.5;
     { text: ' in the presence of Sri/Smt.' },
     { text: ` ${safeText(form.cashInCharge)}`, bold: true },
     { text: ' (Cash in charge) and the exact weight, purity and market value are indicated below:' },
-  ], margin, y, contentWidth, 4.5, 10.4)+2;
+  ], margin, y, contentWidth, 4.5, 10.4) + 2;
 
   const dataRowCount = rows.length;
   const bodyMinHeight = dataRowCount <= 2 ? 11 : dataRowCount <= 4 ? 8.5 : dataRowCount <= 7 ? 7 : 6.2;
@@ -303,7 +308,7 @@ y += 5.5;
     formatWeight(row.stoneWeight),
     formatWeight(row.grossWeight),
     formatWeight(row.netWeight),
-   `${purityText(row.purity)} Ct`,
+    `${purityText(row.purity)} Ct`,
     ...customColumns.map((column) => row.customValues?.[column.id] || ''),
     formatMoney(row.marketValue),
   ]);
@@ -376,41 +381,37 @@ y += 5.5;
     { text: 'I solemnly declare that weight, purity of the gold ornaments/precious stones indicated above are correct and I undertake to indemnify the Bank against any loss it may sustain on account of any inaccuracy in the above appraisal.' },
   ], margin, y, contentWidth, 4.5, 10.0) + 2;
 
+  const bottomY = Math.max(y + 8, 235);
+  const rightX = pageWidth - margin - 2;
 
-const bottomY = Math.max(y + 8, 235);
-const rightX = pageWidth - margin - 2;
+  setFont(doc, 'bold', 11.2);
+  doc.text('Yours faithfully', rightX, bottomY + 8, { align: 'right' });
 
-// ---- Right side: Appraiser ----
-setFont(doc, 'bold', 11.2);
-doc.text('Yours faithfully', rightX, bottomY + 8, { align: 'right' });
+  setFont(doc, 'bold', 11.2);
+  doc.text('Name & Signature of the Appraiser', rightX, bottomY + 16, { align: 'right' });
 
-setFont(doc, 'bold', 11.2);
-doc.text('Name & Signature of the Appraiser', rightX, bottomY + 16, { align: 'right' });
+  setFont(doc, 'normal', 9.2);
+  doc.text('Place:', margin + 2, bottomY + 8);
+  const placeWidth = doc.getTextWidth('Place:');
+  setFont(doc, 'bold', 9.2);
+  doc.text(safeText(form.place), margin + 2 + placeWidth + 1, bottomY + 8);
 
-// ---- Left side: Place, Date, Borrower ----
-setFont(doc, 'normal', 9.2);
-doc.text('Place:', margin + 2, bottomY + 8);
-const placeWidth = doc.getTextWidth('Place:');
-setFont(doc, 'bold', 9.2);
-doc.text(safeText(form.place), margin + 2 + placeWidth + 1, bottomY + 8);
+  setFont(doc, 'normal', 9.2);
+  doc.text('Date:', margin + 2, bottomY + 14);
+  const dateWidth = doc.getTextWidth('Date:');
+  setFont(doc, 'bold', 9.2);
+  doc.text(dateText(form.signatureDate), margin + 2 + dateWidth + 1, bottomY + 14);
 
-setFont(doc, 'normal', 9.2);
-doc.text('Date:', margin + 2, bottomY + 14);
-const dateWidth = doc.getTextWidth('Date:');
-setFont(doc, 'bold', 9.2);
-doc.text(dateText(form.signatureDate), margin + 2 + dateWidth + 1, bottomY + 14);
+  setFont(doc, 'bold', 11.2);
+  doc.text('Name & Signature of the Borrower', margin + 2, bottomY + 24);
 
-setFont(doc, 'bold', 11.2);
-doc.text('Name & Signature of the Borrower', margin + 2, bottomY + 24);
-
-// ---- Footer credit ----
-setFont(doc, 'normal', 9.2);
-doc.text(
-  safeText(shop.footerCredit),
-  pageWidth - margin - 2,
-  Math.max(bottomY + 34, pageHeight - 11),
-  { align: 'right' },
-);
+  setFont(doc, 'normal', 9.2);
+  doc.text(
+    safeText(shop.footerCredit),
+    pageWidth - margin - 2,
+    Math.max(bottomY + 34, pageHeight - 11),
+    { align: 'right' },
+  );
 
   const filenameName = safeText(form.borrowerName).replace(/\s+/g, '_') || 'Borrower';
   const filenameDate = safeText(form.date) || new Date().toISOString().slice(0, 10);
