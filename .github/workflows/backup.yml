@@ -2,15 +2,21 @@ name: Kanhaiya Gold Backup
 
 on:
   schedule:
-    # 02:30 IST every day (21:00 UTC previous day)
+    # Daily database backup: 02:30 IST (21:00 UTC previous day)
     - cron: '0 21 * * *'
+    # Weekly database + Cloudinary image backup: Sunday 02:30 IST
+    - cron: '0 21 * * 0'
   workflow_dispatch:
     inputs:
       backup_images:
-        description: 'Also back up Cloudinary images (weekly/manual)'
+        description: 'Also back up Cloudinary images now'
         required: false
         default: 'false'
         type: boolean
+
+env:
+  # The Sunday schedule automatically includes Cloudinary images.
+  BACKUP_IMAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.backup_images || github.event.schedule == '0 21 * * 0' && 'true' || 'false' }}
 
 jobs:
   backup:
@@ -41,8 +47,9 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          GOOGLE_OAUTH_REDIRECT_URI: ${{ secrets.GOOGLE_OAUTH_REDIRECT_URI }}
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          BACKUP_IMAGES: ${{ inputs.backup_images || 'false' }}
+          BACKUP_IMAGES: ${{ env.BACKUP_IMAGES }}
         run: npm run backup
