@@ -243,7 +243,7 @@ function MobileDashboard() {
   }
 
   function validate() {
-    const required = [form.date, form.bankAccount, form.branchName, form.borrowerName, form.fatherName, form.borrowerAddress, form.cashInCharge, form.place];
+    const required = [form.date, form.branchName, form.borrowerName, form.fatherName, form.borrowerAddress, form.cashInCharge, form.place];
     if (required.some((value) => !String(value || '').trim())) {
       setError('Please complete the borrower, bank, and cash-in-charge details.');
       return false;
