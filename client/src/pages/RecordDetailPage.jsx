@@ -39,11 +39,27 @@ function serialNumber(refNo) {
   return match ? Number(match[1]) : 0;
 }
 
+function paymentDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
 function RecordDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [record, setRecord] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [dueSummary, setDueSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState('');
   const [pdfStatus, setPdfStatus] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -53,11 +69,13 @@ function RecordDetailPage() {
     async function load() {
       try {
         setLoading(true);
+        setHistoryLoading(true);
         setError('');
 
-        const [recordResponse, recordsResponse] = await Promise.all([
+        const [recordResponse, recordsResponse, dueResponse] = await Promise.all([
           fetch(`${API_BASE}/certificates/${id}`),
           fetch(`${API_BASE}/certificates`),
+          fetch(`${API_BASE}/dues?certificateId=${encodeURIComponent(id)}`),
         ]);
 
         if (recordResponse.status === 404) throw new Error('Record not found');
@@ -66,25 +84,37 @@ function RecordDetailPage() {
 
         const result = await recordResponse.json();
         const allRecords = await recordsResponse.json();
+        const dueList = dueResponse.ok ? await dueResponse.json() : [];
         const maxSerial = allRecords.reduce((max, item) => Math.max(max, serialNumber(item.refNo)), 0);
         const currentSerial = serialNumber(result.refNo);
+
+        let paymentList = [];
+        try {
+          const paymentResponse = await fetch(`${API_BASE}/dues/certificate/${id}/payments`);
+          if (paymentResponse.ok) paymentList = await paymentResponse.json();
+        } catch {
+          paymentList = [];
+        }
 
         if (!cancelled) {
           setRecord({
             ...result,
             isLatest: currentSerial > 0 && currentSerial === maxSerial,
           });
+          setDueSummary(dueList.find((item) => String(item.certificateId) === String(id)) || null);
+          setPayments(Array.isArray(paymentList) ? paymentList : []);
         }
       } catch (loadError) {
         if (!cancelled) setError(loadError.message || 'Failed to load record');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setHistoryLoading(false);
+        }
       }
     }
     load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [id]);
 
   async function handleRegenerate() {
@@ -101,7 +131,6 @@ function RecordDetailPage() {
 
   async function handleDelete() {
     if (!record?.isLatest) return;
-
     const confirmed = window.confirm(
       `Delete latest certificate ${record.refNo || ''} for ${record.borrowerName}?\n\nOnly the latest certificate can be deleted. The next serial will reuse this number.`,
     );
@@ -113,7 +142,6 @@ function RecordDetailPage() {
       const response = await fetch(`${API_BASE}/certificates/${record.id}`, { method: 'DELETE' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || 'Delete failed');
-
       setPdfStatus(`Certificate deleted. Next serial will be ${result.nextRefNo}.`);
       navigate('/records');
     } catch (deleteError) {
@@ -124,20 +152,14 @@ function RecordDetailPage() {
   }
 
   if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 pb-20">
-        <p className="text-sm text-slate-500">Loading record...</p>
-      </main>
-    );
+    return <main className="flex min-h-screen items-center justify-center bg-slate-50 pb-20"><p className="text-sm text-slate-500">Loading record...</p></main>;
   }
 
   if (error) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 pb-20">
         <p className="text-sm text-red-600">{error}</p>
-        <Link className="text-sm font-semibold text-indigo-600" to="/records">
-          Back to Records
-        </Link>
+        <Link className="text-sm font-semibold text-indigo-600" to="/records">Back to Records</Link>
         <MobileBottomNav />
       </main>
     );
@@ -145,42 +167,27 @@ function RecordDetailPage() {
 
   const payload = record?.payload || {};
   const { shop = {}, form = {}, rows = [], customColumns = [], totals = {}, summaries = [], amountWords = '' } = payload;
+  const initialDue = Number(dueSummary?.initialDue ?? Number(form.appraisalCharge) || 0);
+  const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const remainingDue = dueSummary ? Number(dueSummary.dueAmount || 0) : Math.max(initialDue - totalPaid, 0);
 
   return (
     <main className="min-h-screen bg-slate-50 pb-24 text-slate-800">
       <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-[1300px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <button className="text-xs font-semibold uppercase tracking-wide text-indigo-600" onClick={() => navigate('/records')}>
-              &larr; Back to Records
-            </button>
+            <button className="text-xs font-semibold uppercase tracking-wide text-indigo-600" onClick={() => navigate('/records')}>&larr; Back to Records</button>
             <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">{record.borrowerName}</h1>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:flex">
-            <button
-              className="h-11 rounded bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-60"
-              onClick={handleRegenerate}
-              disabled={deleting}
-            >
-              Regenerate PDF
-            </button>
-            {record.isLatest && (
-              <button
-                className="h-11 rounded border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:opacity-60"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? 'Deleting...' : 'Delete Latest Record'}
-              </button>
-            )}
+            <button className="h-11 rounded bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-60" onClick={handleRegenerate} disabled={deleting}>Regenerate PDF</button>
+            {record.isLatest && <button className="h-11 rounded border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:opacity-60" onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting...' : 'Delete Latest Record'}</button>}
           </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-[1300px] space-y-5 p-3 sm:p-5">
-        {pdfStatus && (
-          <div className="rounded border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-700">{pdfStatus}</div>
-        )}
+        {pdfStatus && <div className="rounded border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-700">{pdfStatus}</div>}
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card title="Shop Details">
@@ -188,19 +195,12 @@ function RecordDetailPage() {
             <InfoRow label="Shop Address" value={shop.addressHindi} />
             <InfoRow label="Registration No." value={shop.registrationNo} />
             <InfoRow label="Appraiser A/c No." value={shop.appraiserAccount} />
-            {shop.itemImageUrl && (
-              <div className="mt-3 flex items-center gap-3">
-                <img className="h-16 w-16 rounded border border-slate-200 object-cover" src={shop.itemImageUrl} alt="Gold item" />
-                <a className="text-xs font-semibold text-indigo-600" href={shop.itemImageUrl} target="_blank" rel="noreferrer">
-                  Open Photo
-                </a>
-              </div>
-            )}
+            {shop.itemImageUrl && <div className="mt-3 flex items-center gap-3"><img className="h-16 w-16 rounded border border-slate-200 object-cover" src={shop.itemImageUrl} alt="Gold item" /><a className="text-xs font-semibold text-indigo-600" href={shop.itemImageUrl} target="_blank" rel="noreferrer">Open Photo</a></div>}
           </Card>
 
           <Card title="Reference, Bank & Borrower Details">
             <InfoRow label="Ref No." value={form.refNo} />
-            <InfoRow label="Appraisal Charge (Rs.)" value={formatMoney(form.appraisalCharge)} />
+            <InfoRow label="Appraisal Charge (Rs.)" value={form.appraisalCharge ? formatMoney(form.appraisalCharge) : '-'} />
             <InfoRow label="Date" value={form.date} />
             <InfoRow label="Bank A/c No." value={form.bankAccount} />
             <InfoRow label="Branch Name" value={form.branchName} />
@@ -215,87 +215,46 @@ function RecordDetailPage() {
           </Card>
         </div>
 
+        <Card title="Payment History">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200"><p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Initial Due</p><p className="mt-1 text-base font-black text-slate-900">₹{formatMoney(initialDue)}</p></div>
+            <div className="rounded-xl bg-emerald-50 p-3 ring-1 ring-emerald-100"><p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Total Paid</p><p className="mt-1 text-base font-black text-emerald-900">₹{formatMoney(totalPaid)}</p></div>
+            <div className={`rounded-xl p-3 ring-1 ${remainingDue > 0 ? 'bg-amber-50 ring-amber-100' : 'bg-slate-50 ring-slate-200'}`}><p className={`text-[10px] font-bold uppercase tracking-wide ${remainingDue > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Remaining Due</p><p className={`mt-1 text-base font-black ${remainingDue > 0 ? 'text-amber-900' : 'text-slate-900'}`}>₹{formatMoney(remainingDue)}</p></div>
+          </div>
+
+          {historyLoading ? (
+            <p className="mt-4 text-sm text-slate-500">Loading payment history...</p>
+          ) : payments.length === 0 ? (
+            <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No payments recorded yet.</div>
+          ) : (
+            <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full min-w-[520px] border-collapse text-sm">
+                <thead><tr className="bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-500"><th className="border-b border-slate-200 p-3 text-left">Transaction</th><th className="border-b border-slate-200 p-3 text-right">Amount</th><th className="border-b border-slate-200 p-3 text-right">Date</th></tr></thead>
+                <tbody>
+                  {payments.map((payment, index) => (
+                    <tr key={payment.id || index}><td className="border-b border-slate-100 p-3 text-slate-700">#{payments.length - index}</td><td className="border-b border-slate-100 p-3 text-right font-bold text-slate-900">₹{formatMoney(payment.amount)}</td><td className="border-b border-slate-100 p-3 text-right text-slate-600">{paymentDate(payment.paidAt)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
         <Card title="Appraisal Table">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-100 text-xs font-semibold text-slate-600">
-                  <th className="border border-slate-200 p-2">Sl</th>
-                  <th className="border border-slate-200 p-2 text-left">Description</th>
-                  <th className="border border-slate-200 p-2">Units</th>
-                  <th className="border border-slate-200 p-2">Stone Wt</th>
-                  <th className="border border-slate-200 p-2">Gross Wt</th>
-                  <th className="border border-slate-200 p-2">Net Wt</th>
-                  <th className="border border-slate-200 p-2">Purity</th>
-                  {customColumns.map((column) => (
-                    <th key={column.id} className="border border-slate-200 p-2">{column.label}</th>
-                  ))}
-                  <th className="border border-slate-200 p-2">Market Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={row.id || index}>
-                    <td className="border border-slate-200 p-2 text-center">{index + 1}</td>
-                    <td className="border border-slate-200 p-2">{row.description}</td>
-                    <td className="border border-slate-200 p-2 text-right">{row.units}</td>
-                    <td className="border border-slate-200 p-2 text-right">{formatWeight(row.stoneWeight)}</td>
-                    <td className="border border-slate-200 p-2 text-right">{formatWeight(row.grossWeight)}</td>
-                    <td className="border border-slate-200 p-2 text-right">{formatWeight(row.netWeight)}</td>
-                    <td className="border border-slate-200 p-2 text-center">{row.purity}</td>
-                    {customColumns.map((column) => (
-                      <td key={column.id} className="border border-slate-200 p-2">{row.customValues?.[column.id] || ''}</td>
-                    ))}
-                    <td className="border border-slate-200 p-2 text-right">{formatMoney(row.marketValue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-100 font-semibold">
-                  <td className="border border-slate-200 p-2">Total</td>
-                  <td className="border border-slate-200 p-2"></td>
-                  <td className="border border-slate-200 p-2 text-right">{totals.units}</td>
-                  <td className="border border-slate-200 p-2 text-right">{formatWeight(totals.stoneWeight)}</td>
-                  <td className="border border-slate-200 p-2 text-right">{formatWeight(totals.grossWeight)}</td>
-                  <td className="border border-slate-200 p-2 text-right">{formatWeight(totals.netWeight)}</td>
-                  <td className="border border-slate-200 p-2"></td>
-                  {customColumns.map((column) => <td key={column.id} className="border border-slate-200 p-2"></td>)}
-                  <td className="border border-slate-200 p-2 text-right">{formatMoney(totals.marketValue)}</td>
-                </tr>
-              </tfoot>
+              <thead><tr className="bg-slate-100 text-xs font-semibold text-slate-600"><th className="border border-slate-200 p-2">Sl</th><th className="border border-slate-200 p-2 text-left">Description</th><th className="border border-slate-200 p-2">Units</th><th className="border border-slate-200 p-2">Stone Wt</th><th className="border border-slate-200 p-2">Gross Wt</th><th className="border border-slate-200 p-2">Net Wt</th><th className="border border-slate-200 p-2">Purity</th>{customColumns.map((column) => <th key={column.id} className="border border-slate-200 p-2">{column.label}</th>)}<th className="border border-slate-200 p-2">Market Value</th></tr></thead>
+              <tbody>{rows.map((row, index) => <tr key={row.id || index}><td className="border border-slate-200 p-2 text-center">{index + 1}</td><td className="border border-slate-200 p-2">{row.description}</td><td className="border border-slate-200 p-2 text-right">{row.units}</td><td className="border border-slate-200 p-2 text-right">{formatWeight(row.stoneWeight)}</td><td className="border border-slate-200 p-2 text-right">{formatWeight(row.grossWeight)}</td><td className="border border-slate-200 p-2 text-right">{formatWeight(row.netWeight)}</td><td className="border border-slate-200 p-2 text-center">{row.purity}</td>{customColumns.map((column) => <td key={column.id} className="border border-slate-200 p-2">{row.customValues?.[column.id] || ''}</td>)}<td className="border border-slate-200 p-2 text-right">{formatMoney(row.marketValue)}</td></tr>)}</tbody>
+              <tfoot><tr className="bg-slate-100 font-semibold"><td className="border border-slate-200 p-2">Total</td><td className="border border-slate-200 p-2"></td><td className="border border-slate-200 p-2 text-right">{totals.units}</td><td className="border border-slate-200 p-2 text-right">{formatWeight(totals.stoneWeight)}</td><td className="border border-slate-200 p-2 text-right">{formatWeight(totals.grossWeight)}</td><td className="border border-slate-200 p-2 text-right">{formatWeight(totals.netWeight)}</td><td className="border border-slate-200 p-2"></td>{customColumns.map((column) => <td key={column.id} className="border border-slate-200 p-2"></td>)}<td className="border border-slate-200 p-2 text-right">{formatMoney(totals.marketValue)}</td></tr></tfoot>
             </table>
           </div>
         </Card>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <Card title="Amount in Words">
-            <p className="text-sm font-semibold text-slate-900">{amountWords}</p>
-            <p className="mt-2 text-xs text-slate-500">Round Up: Rs. {formatMoney(totals.marketValue)}</p>
-          </Card>
-
-          <Card title="Purity Summaries">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr>
-                  <th className="border border-slate-200 bg-slate-100 p-2 text-left">Purity</th>
-                  <th className="border border-slate-200 bg-slate-100 p-2 text-right">Gross Wt (gm)</th>
-                  <th className="border border-slate-200 bg-slate-100 p-2 text-right">Net Wt (gm)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summaries.map((summary) => (
-                  <tr key={summary.purity}>
-                    <td className="border border-slate-200 p-2">{summary.purity}</td>
-                    <td className="border border-slate-200 p-2 text-right">{formatWeight(summary.grossWeight)}</td>
-                    <td className="border border-slate-200 p-2 text-right">{formatWeight(summary.netWeight)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+          <Card title="Amount in Words"><p className="text-sm font-semibold text-slate-900">{amountWords}</p><p className="mt-2 text-xs text-slate-500">Round Up: Rs. {formatMoney(totals.marketValue)}</p></Card>
+          <Card title="Purity Summaries"><table className="w-full border-collapse text-xs"><thead><tr><th className="border border-slate-200 bg-slate-100 p-2 text-left">Purity</th><th className="border border-slate-200 bg-slate-100 p-2 text-right">Gross Wt (gm)</th><th className="border border-slate-200 bg-slate-100 p-2 text-right">Net Wt (gm)</th></tr></thead><tbody>{summaries.map((summary) => <tr key={summary.purity}><td className="border border-slate-200 p-2">{summary.purity}</td><td className="border border-slate-200 p-2 text-right">{formatWeight(summary.grossWeight)}</td><td className="border border-slate-200 p-2 text-right">{formatWeight(summary.netWeight)}</td></tr>)}</tbody></table></Card>
         </div>
       </div>
-
       <MobileBottomNav />
     </main>
   );
