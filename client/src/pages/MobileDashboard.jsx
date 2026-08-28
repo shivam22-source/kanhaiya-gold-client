@@ -371,13 +371,6 @@ function MobileDashboard() {
 
         {step === 0 && (
           <div className="mt-4 space-y-4">
-            <MobileCard title="Borrower">
-              <div className="grid gap-4">
-                <Field label="Borrower Name" value={form.borrowerName} onChange={(v) => updateForm('borrowerName', v)} />
-                <Field label="Father / Husband Name" value={form.fatherName} onChange={(v) => updateForm('fatherName', v)} />
-                <Field label="Resident" value={form.borrowerAddress} onChange={(v) => updateForm('borrowerAddress', v)} />
-              </div>
-            </MobileCard>
             <MobileCard title="Bank & Appraisal">
               <div className="grid gap-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -388,7 +381,6 @@ function MobileDashboard() {
 />
                   <Field label="Date" type="date" value={form.date} onChange={(v) => updateForm('date', v)} />
                 </div>
-                <Field label="Bank A/c No." value={form.bankAccount} onChange={(v) => updateForm('bankAccount', v)} inputMode="numeric" />
                 <Field label="Branch Name" value={form.branchName} onChange={(v) => updateForm('branchName', v)} />
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Appraisal Charge" type="number" value={form.appraisalCharge} onChange={(v) => updateForm('appraisalCharge', v === '' ? '' : Number(v))} />
@@ -399,6 +391,14 @@ function MobileDashboard() {
                   <Field label="Place" value={form.place} onChange={(v) => updateForm('place', v)} />
                   <Field label="Signature Date" type="date" value={form.signatureDate} onChange={(v) => updateForm('signatureDate', v)} />
                 </div>
+              </div>
+            </MobileCard>
+            <MobileCard title="Borrower">
+              <div className="grid gap-4">
+                <Field label="Borrower Name" value={form.borrowerName} onChange={(v) => updateForm('borrowerName', v)} />
+                <Field label="Father / Husband Name" value={form.fatherName} onChange={(v) => updateForm('fatherName', v)} />
+                <Field label="Resident" value={form.borrowerAddress} onChange={(v) => updateForm('borrowerAddress', v)} />
+                                <Field label="Bank A/c No." value={form.bankAccount} onChange={(v) => updateForm('bankAccount', v)} inputMode="numeric" />
               </div>
             </MobileCard>
 
