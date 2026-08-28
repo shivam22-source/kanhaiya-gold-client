@@ -52,7 +52,6 @@ export async function initDatabase() {
   await pool.query('ALTER TABLE certificate_dues ADD COLUMN IF NOT EXISTS initial_due NUMERIC(12, 2) NOT NULL DEFAULT 0;');
   await pool.query("ALTER TABLE certificate_dues ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';");
   await pool.query("UPDATE certificate_dues SET initial_due = due_amount WHERE initial_due = 0 AND due_amount > 0;");
-  await pool.query("UPDATE certificate_dues SET status = CASE WHEN due_amount = 0 THEN 'closed' ELSE 'active' END;");
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS due_payments (
@@ -84,21 +83,21 @@ export async function initDatabase() {
     ON due_payments (due_id, paid_at DESC);
   `);
 
-  // Backfill due accounts for certificates created before automatic due tracking existed.
+  // Backfill due accounts for existing certificates that have an appraisal charge.
   await pool.query(`
     INSERT INTO certificate_dues (certificate_id, initial_due, due_amount, status)
     SELECT
       c.id,
-      GREATEST(COALESCE(NULLIF(c.payload->'form'->>'appraisalCharge', '')::numeric, 0), 0),
-      GREATEST(COALESCE(NULLIF(c.payload->'form'->>'appraisalCharge', '')::numeric, 0), 0),
-      CASE
-        WHEN GREATEST(COALESCE(NULLIF(c.payload->'form'->>'appraisalCharge', '')::numeric, 0), 0) = 0 THEN 'closed'
-        ELSE 'active'
-      END
+      GREATEST(CASE WHEN (c.payload->'form'->>'appraisalCharge') ~ '^\\s*[0-9]+(\\.[0-9]+)?\\s*$'
+        THEN (c.payload->'form'->>'appraisalCharge')::numeric ELSE 0 END, 0),
+      GREATEST(CASE WHEN (c.payload->'form'->>'appraisalCharge') ~ '^\\s*[0-9]+(\\.[0-9]+)?\\s*$'
+        THEN (c.payload->'form'->>'appraisalCharge')::numeric ELSE 0 END, 0),
+      'active'
     FROM certificates c
     LEFT JOIN certificate_dues d ON d.certificate_id = c.id
     WHERE d.id IS NULL
-      AND GREATEST(COALESCE(NULLIF(c.payload->'form'->>'appraisalCharge', '')::numeric, 0), 0) > 0
+      AND (c.payload->'form'->>'appraisalCharge') ~ '^\\s*[0-9]+(\\.[0-9]+)?\\s*$'
+      AND (c.payload->'form'->>'appraisalCharge')::numeric > 0
     ON CONFLICT (certificate_id) DO NOTHING;
   `);
 }
