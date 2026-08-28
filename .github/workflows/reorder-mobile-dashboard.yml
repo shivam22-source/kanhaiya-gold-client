@@ -1,0 +1,69 @@
+name: One-time Mobile Dashboard Reorder
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reorder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reorder borrower and bank cards
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('client/src/pages/MobileDashboard.jsx')
+          text = path.read_text(encoding='utf-8')
+
+          borrower_pattern = re.compile(r'\n            <MobileCard title="Borrower">.*?\n            </MobileCard>', re.S)
+          bank_pattern = re.compile(r'\n            <MobileCard title="Bank & Appraisal">.*?\n            </MobileCard>', re.S)
+
+          borrower = borrower_pattern.search(text)
+          bank = bank_pattern.search(text)
+          if not borrower or not bank:
+              raise SystemExit('Could not find Borrower and Bank & Appraisal cards')
+          if borrower.start() > bank.start():
+              raise SystemExit('Cards are already reordered')
+
+          borrower_block = borrower.group(0)
+          bank_block = bank.group(0)
+
+          bank_field = re.compile(r'\n\s*<Field label="Bank A/c No\." value=\{form\.bankAccount\} onChange=\{\(v\) => updateForm\(\'bankAccount\', v\)\} inputMode="numeric" />')
+          bank_field_match = bank_field.search(bank_block)
+          if not bank_field_match:
+              raise SystemExit('Could not find Bank A/c No. field')
+
+          bank_account_field = bank_field_match.group(0).strip('\n')
+          bank_block = bank_block[:bank_field_match.start()] + bank_block[bank_field_match.end():]
+
+          resident_marker = '<Field label="Resident" value={form.borrowerAddress} onChange={(v) => updateForm(\'borrowerAddress\', v)} />'
+          if resident_marker not in borrower_block:
+              raise SystemExit('Could not find Resident field')
+          borrower_block = borrower_block.replace(
+              resident_marker,
+              resident_marker + '\n                ' + bank_account_field,
+              1,
+          )
+
+          first, rest = text[:borrower.start()], text[borrower.end():]
+          between = text[borrower.end():bank.start()]
+          after = text[bank.end():]
+          if between.strip():
+              raise SystemExit('Unexpected content between borrower and bank cards; refusing to edit')
+
+          new_text = first + bank_block + borrower_block + after
+          path.write_text(new_text, encoding='utf-8')
+      - name: Commit and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add client/src/pages/MobileDashboard.jsx .github/workflows/reorder-mobile-dashboard.yml
+          git commit -m "Reorder mobile borrower and bank sections"
+          git push
