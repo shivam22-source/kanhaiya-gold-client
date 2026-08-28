@@ -1,0 +1,35 @@
+name: Fix Optional Bank Account
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-bank-account-validation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make bank account optional
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('client/src/pages/MobileDashboard.jsx')
+          text = path.read_text(encoding='utf-8')
+          old = "const required = [form.date, form.bankAccount, form.branchName, form.borrowerName, form.fatherName, form.borrowerAddress, form.cashInCharge, form.place];"
+          new = "const required = [form.date, form.branchName, form.borrowerName, form.fatherName, form.borrowerAddress, form.cashInCharge, form.place];"
+          if old not in text:
+              raise SystemExit('Expected validation line not found; no changes made.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Commit change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add client/src/pages/MobileDashboard.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m 'Make bank account optional'
+          git push
