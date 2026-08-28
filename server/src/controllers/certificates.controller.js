@@ -16,6 +16,7 @@ function certificateRow(row) {
 }
 
 export async function createCertificate(req, res, next) {
+  const client = await pool.connect();
   try {
     const payload = req.body;
     const form = payload.form || {};
@@ -26,7 +27,11 @@ export async function createCertificate(req, res, next) {
       return res.status(400).json({ message: 'Borrower name is required.' });
     }
 
-    const result = await pool.query(
+    const appraisalCharge = Math.max(Number(form.appraisalCharge) || 0, 0);
+
+    await client.query('BEGIN');
+
+    const result = await client.query(
       `INSERT INTO certificates (borrower_name, ref_no, certificate_date, item_image_url, total_market_value, payload)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
@@ -40,9 +45,29 @@ export async function createCertificate(req, res, next) {
       ],
     );
 
-    return res.status(201).json(certificateRow({ ...result.rows[0], is_latest: true }));
+    const certificate = result.rows[0];
+
+    // Appraisal Charge is the initial/current due. Zero charge means no active due is created.
+    if (appraisalCharge > 0) {
+      await client.query(
+        `INSERT INTO certificate_dues (certificate_id, initial_due, due_amount, status)
+         VALUES ($1, $2, $2, 'active')
+         ON CONFLICT (certificate_id) DO UPDATE
+           SET initial_due = EXCLUDED.initial_due,
+               due_amount = EXCLUDED.due_amount,
+               status = 'active',
+               updated_at = NOW()`,
+        [certificate.id, appraisalCharge],
+      );
+    }
+
+    await client.query('COMMIT');
+    return res.status(201).json(certificateRow({ ...certificate, is_latest: true }));
   } catch (error) {
+    try { await client.query('ROLLBACK'); } catch { /* ignore rollback errors */ }
     return next(error);
+  } finally {
+    client.release();
   }
 }
 
@@ -153,11 +178,7 @@ export async function deleteCertificate(req, res, next) {
       nextRefNo: `KJ-${nextNumber}`,
     });
   } catch (error) {
-    try {
-      await client.query('ROLLBACK');
-    } catch {
-      // Ignore rollback failures.
-    }
+    try { await client.query('ROLLBACK'); } catch { /* Ignore rollback failures. */ }
     return next(error);
   } finally {
     client.release();
