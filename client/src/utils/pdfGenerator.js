@@ -89,7 +89,15 @@ export async function generateCertificatePdf(data, options = {}) {
   if (shop.qrImage) { doc.addImage(shop.qrImage, imageType(shop.qrImage), qrX, qrY, qrSize, qrSize); } else { setFont(doc, 'normal', 7); doc.setTextColor(190); doc.text('QR', qrX + qrSize / 2, qrY + qrSize / 2 + 1, { align: 'center' }); doc.setTextColor(20); }
   setFont(doc, 'bold', 13); doc.text('APPRAISER CERTIFICATE', pageWidth / 2, 50, { align: 'center' }); doc.line(74, 52, 136, 52);
   let y = 59; setFont(doc, 'normal', 10); doc.text('The Branch Manager', margin, y); y += 4.5; doc.text('State Bank Of India', margin, y); setFont(doc, 'normal', 9.2);
-  const accountLabel = 'A/c No.:'; const accountValue = safeText(form.bankAccount); const accountLabelWidth = doc.getTextWidth(accountLabel); const accountValueWidth = doc.getTextWidth(accountValue); const totalWidth = accountLabelWidth + 1 + accountValueWidth; const startX = pageWidth - margin - totalWidth; doc.text(accountLabel, startX, y); setFont(doc, 'bold', 9.2); doc.text(accountValue, startX + accountLabelWidth + 1, y); setFont(doc, 'bold', 10); y += 4.5;
+  const accountLabel = 'A/c No:';
+  const accountValue = safeText(form.bankAccount);
+  const accountX = 151;
+  const accountValueX = accountX + 20;
+  doc.text(accountLabel, accountX, y);
+  setFont(doc, 'bold', 9.2);
+  if (accountValue) doc.text(accountValue, accountValueX, y);
+  setFont(doc, 'bold', 10);
+  y += 4.5;
   const branchName = safeText(form.branchName); doc.text(branchName, margin, y); const branchNameWidth = doc.getTextWidth(branchName); setFont(doc, 'normal', 9.2); doc.text(' branch', margin + branchNameWidth + 1, y); y += 6; doc.text('Dear Sir,', margin, y); y += 5.5;
   y = drawRichWrapped(doc, [{ text: 'I hereby certify that Sri/Smt.' }, { text: ` ${safeText(form.borrowerName)}`, bold: true }, { text: ' S/W/D of' }, { text: ` ${safeText(form.fatherName)}`, bold: true }, { text: ' Resident of' }, { text: ` ${safeText(form.borrowerAddress)}`, bold: true }, { text: ' who has sought gold loan from the bank is not my relative and the gold against which the loan is sought is not purchased from me. The ornaments/coins have been weighted and appraised by me on' }, { text: ` ${dateText(form.appraisalDate)}`, bold: true }, { text: ' in the presence of Sri/Smt.' }, { text: ` ${safeText(form.cashInCharge)}`, bold: true }, { text: ' (Cash in charge) and the exact weight, purity and market value are indicated below:' }], margin, y, contentWidth, 4.5, 10.4) + 2;
   const dataRowCount = rows.length; const bodyMinHeight = dataRowCount <= 2 ? 11 : dataRowCount <= 4 ? 8.5 : dataRowCount <= 7 ? 7 : 6.2; const preTableGap = dataRowCount <= 2 ? 6 : dataRowCount <= 4 ? 3.5 : 1.5; const postTableGap = dataRowCount <= 2 ? 7 : dataRowCount <= 4 ? 5 : 3; const postSummaryGap = dataRowCount <= 2 ? 8 : dataRowCount <= 4 ? 6 : 4; y += preTableGap;
