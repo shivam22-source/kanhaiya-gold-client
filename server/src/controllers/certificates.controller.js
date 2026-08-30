@@ -106,9 +106,6 @@ export async function deleteCertificate(req, res, next) {
 
     const target = targetResult.rows[0];
 
-    // Deletion is intentionally restricted to the latest certificate, but
-    // payment history must NOT block deletion. The payment rows are retained
-    // independently as audit history; only the current certificate record is removed.
     const escapedPrefix = 'KJ'.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
     const pattern = `^${escapedPrefix}[-\\s]?(\\d+)$`;
     const latestResult = await client.query(
@@ -126,6 +123,19 @@ export async function deleteCertificate(req, res, next) {
       await client.query('ROLLBACK');
       return res.status(409).json({ message: 'Only the latest certificate can be deleted.', latestRefNo: latest?.ref_no || null });
     }
+
+    // Preserve every payment as an audit record before the certificate is deleted.
+    // The normal due/payment rows may then be removed by the certificate's
+    // ON DELETE CASCADE without losing the transaction history.
+    await client.query(
+      `INSERT INTO deleted_certificate_payment_history
+         (certificate_id, ref_no, payment_amount, paid_at)
+       SELECT d.certificate_id, $2, p.amount, p.paid_at
+       FROM due_payments p
+       JOIN certificate_dues d ON d.id = p.due_id
+       WHERE d.certificate_id = $1`,
+      [target.id, target.ref_no || null],
+    );
 
     await client.query('DELETE FROM certificates WHERE id = $1', [req.params.id]);
     await client.query('COMMIT');
