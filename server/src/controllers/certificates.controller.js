@@ -105,19 +105,10 @@ export async function deleteCertificate(req, res, next) {
     if (!targetResult.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Certificate not found.' }); }
 
     const target = targetResult.rows[0];
-    const paymentResult = await client.query(
-      `SELECT p.id
-       FROM due_payments p
-       JOIN certificate_dues d ON d.id = p.due_id
-       WHERE d.certificate_id = $1
-       LIMIT 1`,
-      [target.id],
-    );
-    if (paymentResult.rowCount) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ message: 'This certificate has payment history and cannot be deleted.' });
-    }
 
+    // Deletion is intentionally restricted to the latest certificate, but
+    // payment history must NOT block deletion. The payment rows are retained
+    // independently as audit history; only the current certificate record is removed.
     const escapedPrefix = 'KJ'.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
     const pattern = `^${escapedPrefix}[-\\s]?(\\d+)$`;
     const latestResult = await client.query(
