@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatMoney } from '../utils/calculations';
 import { API_BASE } from '../utils/config';
+import RecordExportPanel from '../components/RecordExportPanel';
 
 function useDebouncedValue(value, delay = 300) {
   const [debounced, setDebounced] = useState(value);
@@ -117,9 +118,10 @@ function RecordsPage() {
           </div>
         </div>
       </header>
-      
 
-      <div className="mx-auto max-w-[1300px] p-3 sm:p-5">
+      <div className="mx-auto max-w-[1300px] space-y-4 p-3 sm:p-5">
+        <RecordExportPanel records={filteredRecords} />
+
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
             <label className="block lg:col-span-2">
@@ -206,7 +208,7 @@ function RecordsPage() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6">
             <p className="text-sm font-semibold text-slate-700">
               {loading ? 'Loading...' : `${filteredRecords.length} record(s) found`}
