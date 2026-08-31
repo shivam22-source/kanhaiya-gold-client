@@ -7,7 +7,7 @@ import uploadsRouter from './routes/uploads.routes.js';
 import branchCashInChargeRouter from './routes/branchCashInCharge.routes.js';
 import duesRouter from './routes/dues.routes.js';
 import googleBackupRouter from './routes/googleBackup.routes.js';
-import { initDatabase } from './db.js';
+import { initDb } from './db.js';
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
@@ -54,7 +54,7 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ message: 'Server error', detail: error.message });
 });
 
-initDatabase()
+initDb()
   .then(() => {
     app.listen(port, '0.0.0.0', () => {
       console.log(`Server running on 0.0.0.0:${port}`);
