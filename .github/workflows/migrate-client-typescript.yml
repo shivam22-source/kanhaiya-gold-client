@@ -1,0 +1,71 @@
+name: Migrate client source to TypeScript
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Rename React and utility sources
+        shell: bash
+        run: |
+          set -e
+
+          for file in src/App.jsx src/main.jsx src/pages/*.jsx src/components/*.jsx; do
+            [ -f "$file" ] || continue
+            git mv "$file" "${file%.jsx}.tsx"
+          done
+
+          for file in src/utils/appEnhancements.js \
+                      src/utils/appraiserAccountOverride.js \
+                      src/utils/branchCashInChargeBehavior.js \
+                      src/utils/pdfGenerator.js; do
+            [ -f "$file" ] || continue
+            git mv "$file" "${file%.js}.ts"
+          done
+
+          find src -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | \
+            xargs -0 sed -i -E "s#(from ['\"][^'\"]+)\\.(jsx|js)(['\"])#\\1\\3#g; s#import ['\"]([^'\"]+)\\.(jsx|js)(['\"])#import '\1'\3#g"
+
+      - name: Add TypeScript dependencies
+        run: |
+          npm install --save-dev typescript @types/react @types/react-dom
+
+      - name: Commit migration
+        working-directory: .
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No migration changes needed."
+            exit 0
+          fi
+          git add client .github/workflows/migrate-client-typescript.yml
+          git commit -m "refactor(client): migrate React source to TypeScript"
+          git push origin main
+
+      - name: Remove migration workflow
+        if: success()
+        working-directory: .
+        run: |
+          git rm .github/workflows/migrate-client-typescript.yml
+          git commit -m "chore: remove temporary TypeScript migration workflow"
+          git push origin main
