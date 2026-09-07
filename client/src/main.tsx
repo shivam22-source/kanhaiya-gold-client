@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import './utils/appEnhancements';
 import './utils/branchCashInChargeBehavior';
 import './utils/appraiserAccountOverride';
-import App from './App.jsx';
+import App from './App';
 import './index.css';
 
 createRoot(document.getElementById('root')).render(
