@@ -1,11 +1,8 @@
 name: Kanhaiya Gold Backup
 
+# Temporarily disabled automatic backups.
+# Run manually from GitHub Actions when backup is needed.
 on:
-  schedule:
-    # Daily database backup: 02:30 IST (21:00 UTC previous day)
-    - cron: '0 21 * * *'
-    # Weekly database + Cloudinary image backup: Sunday 02:30 IST
-    - cron: '0 21 * * 0'
   workflow_dispatch:
     inputs:
       backup_images:
@@ -15,8 +12,7 @@ on:
         type: boolean
 
 env:
-  # The Sunday schedule automatically includes Cloudinary images.
-  BACKUP_IMAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.backup_images || github.event.schedule == '0 21 * * 0' && 'true' || 'false' }}
+  BACKUP_IMAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.backup_images || 'false' }}
 
 jobs:
   backup:
