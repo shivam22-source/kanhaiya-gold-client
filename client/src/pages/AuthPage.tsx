@@ -1,8 +1,6 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const AUTH_STORAGE_KEY = 'kanhaiya-gold-auth';
-const USERNAME_KEY = 'kanhaiya-gold-username';
+import { API_BASE } from '../utils/config';
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -11,11 +9,9 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(() => Boolean(localStorage.getItem(AUTH_STORAGE_KEY)));
+  const [loading, setLoading] = useState(false);
 
-  const title = useMemo(() => (mode === 'login' ? 'Welcome back' : 'Create account'), [mode]);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
 
@@ -25,37 +21,28 @@ export default function AuthPage() {
       return;
     }
 
-    if (mode === 'create') {
-      if (password.length < 4) {
-        setError('Password should be at least 4 characters.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError('Passwords do not match.');
-        return;
-      }
-      localStorage.setItem(AUTH_STORAGE_KEY, password);
-      localStorage.setItem(USERNAME_KEY, cleanUsername);
-      setSaved(true);
+    if (mode === 'create' && password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const endpoint = mode === 'create' ? '/auth/register' : '/auth/login';
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: cleanUsername, password }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || 'Authentication failed.');
       navigate('/', { replace: true });
-      return;
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : 'Authentication failed.');
+    } finally {
+      setLoading(false);
     }
-
-    const savedPassword = localStorage.getItem(AUTH_STORAGE_KEY);
-    const savedUsername = localStorage.getItem(USERNAME_KEY);
-
-    if (!savedPassword || !savedUsername) {
-      setError('No account found. Create an account first.');
-      setMode('create');
-      return;
-    }
-
-    if (cleanUsername !== savedUsername || password !== savedPassword) {
-      setError('Invalid username or password.');
-      return;
-    }
-
-    navigate('/', { replace: true });
   }
 
   return (
@@ -63,9 +50,9 @@ export default function AuthPage() {
       <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
         <div className="mb-6">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600">Kanhaiya Gold</p>
-          <h1 className="mt-2 text-2xl font-extrabold">{title}</h1>
+          <h1 className="mt-2 text-2xl font-extrabold">{mode === 'login' ? 'Welcome back' : 'Create account'}</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {mode === 'login' ? 'Sign in to continue to the app.' : 'Create a simple app account on this device.'}
+            {mode === 'login' ? 'Sign in to continue to the app.' : 'Create an account for the app.'}
           </p>
         </div>
 
@@ -110,10 +97,11 @@ export default function AuthPage() {
           {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{error}</p>}
 
           <button
-            className="h-12 w-full rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700"
+            className="h-12 w-full rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
             type="submit"
+            disabled={loading}
           >
-            {mode === 'login' ? 'Login' : 'Create Account'}
+            {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create Account'}
           </button>
         </form>
 
@@ -128,10 +116,6 @@ export default function AuthPage() {
             </button>
           )}
         </div>
-
-        {saved && mode === 'login' && (
-          <p className="mt-4 text-center text-xs text-slate-400">Account is stored on this device.</p>
-        )}
       </section>
     </main>
   );
