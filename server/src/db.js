@@ -9,6 +9,24 @@ export const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: 
 
 export async function initDb() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_users (
+      id BIGSERIAL PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS app_sessions (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_app_sessions_user_id ON app_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_app_sessions_expires_at ON app_sessions(expires_at);
+
     CREATE TABLE IF NOT EXISTS certificates (
       id BIGSERIAL PRIMARY KEY,
       borrower_name TEXT NOT NULL,
@@ -52,4 +70,6 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_due_payments_due_id ON due_payments(due_id);
     CREATE INDEX IF NOT EXISTS idx_deleted_payment_history_certificate_id ON deleted_certificate_payment_history(certificate_id);
   `);
+
+  await pool.query("DELETE FROM app_sessions WHERE expires_at <= NOW()");
 }
