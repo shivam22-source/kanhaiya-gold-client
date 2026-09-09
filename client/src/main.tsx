@@ -7,7 +7,11 @@ import './utils/appraiserAccountOverride';
 import App from './App';
 import './index.css';
 
-createRoot(document.getElementById('root')).render(
+const nativeFetch = window.fetch.bind(window);
+window.fetch = (input: RequestInfo | URL, init?: RequestInit) =>
+  nativeFetch(input, { ...init, credentials: init?.credentials ?? 'include' });
+
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <App />
@@ -15,23 +19,24 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 );
 
-
-
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-   navigator.serviceWorker.register('/sw.js').then((registration) => {
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      registration.update();
-    }
-  });
-}).catch(() => {});
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update();
+          }
+        });
+      })
+      .catch(() => {});
   });
 }
 
 let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
-    refreshing = true;
-    window.location.reload();
-  });
+navigator.serviceWorker?.addEventListener('controllerchange', () => {
+  if (refreshing) return;
+  refreshing = true;
+  window.location.reload();
+});
