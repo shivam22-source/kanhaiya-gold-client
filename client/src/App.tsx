@@ -8,8 +8,7 @@ import RecordDetailPage from './pages/RecordDetailPage';
 import DueSettlementPage from './pages/DueSettlementPage';
 import AuthPage from './pages/AuthPage';
 import InstallPrompt from './components/InstallPrompt';
-
-const AUTH_STORAGE_KEY = 'kanhaiya-gold-auth';
+import { API_BASE } from './utils/config';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -32,8 +31,28 @@ function ResponsiveRecords() {
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const authenticated = Boolean(localStorage.getItem(AUTH_STORAGE_KEY));
-  return authenticated ? children : <Navigate to="/login" replace />;
+  const [state, setState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+      .then((response) => {
+        if (!active) return;
+        setState(response.ok ? 'authenticated' : 'unauthenticated');
+      })
+      .catch(() => {
+        if (active) setState('unauthenticated');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (state === 'loading') {
+    return <div className="grid min-h-screen place-items-center bg-slate-50 text-sm text-slate-500">Loading...</div>;
+  }
+
+  return state === 'authenticated' ? children : <Navigate to="/login" replace />;
 }
 
 function App() {
