@@ -15,6 +15,7 @@ import {
 import { numberToWordsIndian } from '../utils/numberToWordsIndian';
 import { generateCertificatePdf } from '../utils/pdfGenerator';
 import { API_BASE } from '../utils/config';
+import LogoutButton from '../components/LogoutButton';
 
 const storageKey = 'sbi-gold-appraiser-shop-settings';
 
@@ -448,6 +449,7 @@ function Dashboard() {
             <button className="h-11 rounded bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700" onClick={handleSharePdf}>
               Share PDF
             </button>
+            <LogoutButton />
           </div>
         </div>
       </header>
@@ -520,208 +522,137 @@ function Dashboard() {
                 value={baseRate24ct}
                 onChange={(value) => setBaseRate24ct(Number(value))}
               />
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Enter the bank's market rate for 24 Ct here. All other carat rates below are calculated automatically
-              from this using standard fineness percentages.
-            </p>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[600px] border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <th className="border border-slate-200 p-2 text-left">Purity</th>
-                    <th className="border border-slate-200 p-2 text-right">Fineness %</th>
-                    <th className="border border-slate-200 p-2 text-right">Rate / gm (auto)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {PURITIES.map((purity) => (
-                    <tr key={purity}>
-                      <td className="border border-slate-200 p-2 font-medium text-slate-800">{purity}</td>
-                      <td className="border border-slate-200 p-2 text-right text-slate-600">{(PURITY_PERCENTAGES[purity] * 100).toFixed(2)}%</td>
-                      <td className="border border-slate-200 p-2 text-right font-semibold text-slate-900">Rs. {formatMoney(rates[purity])}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {PURITIES.map((purity) => (
+                <div key={purity} className="rounded border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{purity}</div>
+                  <div className="mt-1 text-base font-bold text-slate-900">₹{formatMoney(rates[purity])}</div>
+                  <div className="text-xs text-slate-500">{(PURITY_PERCENTAGES[purity] * 100).toFixed(2)}% of 24 Ct</div>
+                </div>
+              ))}
             </div>
           </Section>
 
-          <Section
-            title="Appraisal Table"
-            action={
-              <div className="flex flex-wrap gap-2">
-                <button className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={addCustomColumn}>Add Column</button>
-                <button className="rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700" onClick={addRow}>Add Row</button>
-              </div>
-            }
-          >
+          <Section title="Gold Items & Appraisal">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px] border-collapse text-sm">
+              <table className="min-w-full border-collapse text-sm">
                 <thead>
-                  <tr className="bg-slate-100 text-xs font-semibold text-slate-600">
-                    <th className="border border-slate-200 p-2">Sl</th>
-                    <th className="border border-slate-200 p-2 text-left">Description</th>
-                    <th className="border border-slate-200 p-2">Units</th>
-                    <th className="border border-slate-200 p-2">Stone Wt</th>
-                    <th className="border border-slate-200 p-2">Gross Wt</th>
-                    <th className="border border-slate-200 p-2">Net Wt</th>
-                    <th className="border border-slate-200 p-2">Purity</th>
+                  <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="border-b border-slate-200 px-3 py-3">#</th>
+                    <th className="border-b border-slate-200 px-3 py-3">Description</th>
+                    <th className="border-b border-slate-200 px-3 py-3">Units</th>
+                    <th className="border-b border-slate-200 px-3 py-3">Stone Wt.</th>
+                    <th className="border-b border-slate-200 px-3 py-3">Gross Wt.</th>
+                    <th className="border-b border-slate-200 px-3 py-3">Net Wt.</th>
+                    <th className="border-b border-slate-200 px-3 py-3">Purity</th>
+                    <th className="border-b border-slate-200 px-3 py-3">Market Value</th>
+                    <th className="border-b border-slate-200 px-3 py-3">Action</th>
                     {customColumns.map((column) => (
-                      <th key={column.id} className="border border-slate-200 p-2">
-                        <div className="flex items-center justify-center gap-2">
+                      <th key={column.id} className="border-b border-slate-200 px-3 py-3">
+                        <div className="flex items-center gap-2">
                           {column.label}
-                          <button className="text-red-600" onClick={() => deleteCustomColumn(column.id)} title="Delete column">x</button>
+                          <button className="text-red-500" onClick={() => deleteCustomColumn(column.id)} type="button">×</button>
                         </div>
                       </th>
                     ))}
-                    <th className="border border-slate-200 p-2">Market Value</th>
-                    <th className="border border-slate-200 p-2">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {calculatedRows.map((row, index) => (
-                    <tr key={row.id}>
-                      <td className="border border-slate-200 p-2 text-center">{index + 1}</td>
-                      <td className="border border-slate-200 p-2">
-                        <input className="w-full rounded border border-slate-300 px-2 py-1" value={row.description} onChange={(event) => updateRow(row.id, 'description', event.target.value)} />
-                      </td>
-                      {['units', 'stoneWeight', 'grossWeight'].map((key) => (
-                        <td key={key} className="border border-slate-200 p-2">
-                          <input
-                            className="w-24 rounded border border-slate-300 px-2 py-1 text-right"
-                            type="number"
-                            step={key === 'units' ? '1' : '0.01'}
-                            value={row[key]}
-                            onChange={(event) => updateRow(row.id, key, event.target.value)}
-                          />
-                        </td>
-                      ))}
-                      <td className="border border-slate-200 bg-slate-50 p-2 text-right font-medium text-slate-700" title="Auto-calculated: Gross weight - Stone weight">
-                        {formatWeight(row.netWeight)}
-                      </td>
-                      <td className="border border-slate-200 p-2">
-                        <select className="w-24 rounded border border-slate-300 px-2 py-1" value={row.purity} onChange={(event) => updateRow(row.id, 'purity', event.target.value)}>
+                    <tr key={row.id} className="align-top">
+                      <td className="border-b border-slate-100 px-3 py-3 font-semibold">{index + 1}</td>
+                      <td className="border-b border-slate-100 px-3 py-3 min-w-[190px]"><input className="h-9 w-full rounded border border-slate-300 px-2" value={row.description} onChange={(event) => updateRow(row.id, 'description', event.target.value)} /></td>
+                      <td className="border-b border-slate-100 px-3 py-3 min-w-[90px]"><input className="h-9 w-20 rounded border border-slate-300 px-2" type="number" value={row.units} onChange={(event) => updateRow(row.id, 'units', event.target.value)} /></td>
+                      <td className="border-b border-slate-100 px-3 py-3 min-w-[110px]"><input className="h-9 w-24 rounded border border-slate-300 px-2" type="number" step="0.01" value={row.stoneWeight} onChange={(event) => updateRow(row.id, 'stoneWeight', event.target.value)} /></td>
+                      <td className="border-b border-slate-100 px-3 py-3 min-w-[110px]"><input className="h-9 w-24 rounded border border-slate-300 px-2" type="number" step="0.01" value={row.grossWeight} onChange={(event) => updateRow(row.id, 'grossWeight', event.target.value)} /></td>
+                      <td className="border-b border-slate-100 px-3 py-3 font-semibold text-slate-900">{formatWeight(row.netWeight)}</td>
+                      <td className="border-b border-slate-100 px-3 py-3 min-w-[120px]">
+                        <select className="h-9 rounded border border-slate-300 px-2" value={row.purity} onChange={(event) => updateRow(row.id, 'purity', event.target.value)}>
                           {PURITIES.map((purity) => <option key={purity}>{purity}</option>)}
                         </select>
                       </td>
+                      <td className="border-b border-slate-100 px-3 py-3 min-w-[140px]">
+                        {row.marketManual ? (
+                          <div className="space-y-1">
+                            <input className="h-9 w-32 rounded border border-slate-300 px-2" type="number" step="0.01" value={row.marketValue} onChange={(event) => updateRow(row.id, 'marketValue', event.target.value)} />
+                            <button className="block text-xs font-semibold text-indigo-600" onClick={() => resetMarketValue(row.id)} type="button">Reset</button>
+                          </div>
+                        ) : (
+                          <span className="font-semibold">₹{formatMoney(row.marketValue)}</span>
+                        )}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-3"><button className="rounded border border-red-200 px-2 py-1 text-xs font-semibold text-red-600" onClick={() => deleteRow(row.id)} type="button">Delete</button></td>
                       {customColumns.map((column) => (
-                        <td key={column.id} className="border border-slate-200 p-2">
-                          <input className="w-32 rounded border border-slate-300 px-2 py-1" value={row.customValues?.[column.id] || ''} onChange={(event) => updateCustomValue(row.id, column.id, event.target.value)} />
-                        </td>
+                        <td key={column.id} className="border-b border-slate-100 px-3 py-3 min-w-[130px]"><input className="h-9 w-28 rounded border border-slate-300 px-2" value={row.customValues?.[column.id] || ''} onChange={(event) => updateCustomValue(row.id, column.id, event.target.value)} /></td>
                       ))}
-                      <td className="border border-slate-200 p-2">
-                        <div className="flex items-center gap-2">
-                          <input className="w-32 rounded border border-slate-300 px-2 py-1 text-right" type="number" step="0.01" value={row.marketValue} onChange={(event) => updateRow(row.id, 'marketValue', Number(event.target.value))} />
-                          {row.marketManual && <button className="text-xs font-semibold text-indigo-600" onClick={() => resetMarketValue(row.id)}>Auto</button>}
-                        </div>
-                      </td>
-                      <td className="border border-slate-200 p-2 text-center">
-                        <button className="rounded px-2 py-1 text-red-600 hover:bg-red-50" onClick={() => deleteRow(row.id)}>x</button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-slate-100 font-semibold">
-                    <td className="border border-slate-200 p-2">Total</td>
-                    <td className="border border-slate-200 p-2"></td>
-                    <td className="border border-slate-200 p-2 text-right">{totals.units}</td>
-                    <td className="border border-slate-200 p-2 text-right">{formatWeight(totals.stoneWeight)}</td>
-                    <td className="border border-slate-200 p-2 text-right">{formatWeight(totals.grossWeight)}</td>
-                    <td className="border border-slate-200 p-2 text-right">{formatWeight(totals.netWeight)}</td>
-                    <td className="border border-slate-200 p-2"></td>
-                    {customColumns.map((column) => <td key={column.id} className="border border-slate-200 p-2"></td>)}
-                    <td className="border border-slate-200 p-2 text-right">{formatMoney(totals.marketValue)}</td>
-                    <td className="border border-slate-200 p-2"></td>
+                  <tr className="bg-slate-50 font-bold text-slate-900">
+                    <td colSpan={3} className="border-t border-slate-200 px-3 py-3">Totals</td>
+                    <td className="border-t border-slate-200 px-3 py-3">{formatWeight(totals.stoneWeight)}</td>
+                    <td className="border-t border-slate-200 px-3 py-3">{formatWeight(totals.grossWeight)}</td>
+                    <td className="border-t border-slate-200 px-3 py-3">{formatWeight(totals.netWeight)}</td>
+                    <td className="border-t border-slate-200 px-3 py-3">—</td>
+                    <td className="border-t border-slate-200 px-3 py-3">₹{formatMoney(totals.marketValue)}</td>
+                    <td className="border-t border-slate-200 px-3 py-3">—</td>
+                    {customColumns.map((column) => <td key={column.id} className="border-t border-slate-200 px-3 py-3">—</td>)}
                   </tr>
                 </tfoot>
               </table>
             </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button className="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700" onClick={addRow} type="button">+ Add Item</button>
+              <button className="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700" onClick={addCustomColumn} type="button">+ Add Column</button>
+            </div>
           </Section>
         </div>
 
-        <aside className="h-fit rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 xl:sticky xl:top-5">
-          <h2 className="text-base font-semibold text-slate-950">Live Calculations</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <Metric label="Units" value={totals.units} />
-            <Metric label="Stone Wt" value={formatWeight(totals.stoneWeight)} />
-            <Metric label="Gross Wt" value={formatWeight(totals.grossWeight)} />
-            <Metric label="Net Wt" value={formatWeight(totals.netWeight)} />
-            <Metric label="Total Value" value={formatMoney(totals.marketValue)} wide />
-          </div>
-          <div className="mt-5 rounded border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount in Words</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{amountWords}</p>
-            <p className="mt-2 text-xs text-slate-500">Round Up: {formatMoney(totals.marketValue)}</p>
-          </div>
-          <div className="mt-5">
-            <h3 className="text-sm font-semibold text-slate-900">Purity Summaries</h3>
-            <SummaryTable title="Gross Weight Carat Summary" summaries={summaries} valueKey="grossWeight" />
-            <SummaryTable title="Net weight summary" summaries={summaries} valueKey="netWeight" />
-          </div>
-          {error && <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-          <div className="mt-5 border-t border-slate-200 pt-5">
-            <h3 className="text-sm font-semibold text-slate-900">Saved Records</h3>
-            <button className="mt-3 w-full rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white" onClick={() => saveCertificate()}>Save Record</button>
-            <div className="mt-3 flex gap-2">
-              <input className="h-9 min-w-0 flex-1 rounded border border-slate-300 px-2 text-sm" value={recordSearch} placeholder="Borrower or ref" onChange={(event) => setRecordSearch(event.target.value)} />
-              <button className="rounded border border-slate-300 px-3 text-sm font-semibold" onClick={() => fetchRecords(recordSearch)}>Search</button>
+        <aside className="space-y-5">
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">Current Totals</h2>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex justify-between"><span className="text-slate-500">Net Weight</span><strong>{formatWeight(totals.netWeight)} gm</strong></div>
+              <div className="flex justify-between"><span className="text-slate-500">Market Value</span><strong>₹{formatMoney(totals.marketValue)}</strong></div>
+              <div className="rounded bg-slate-50 p-3 text-xs leading-5 text-slate-600">{amountWords}</div>
             </div>
-            {saveStatus && <p className="mt-2 text-xs text-slate-500">{saveStatus}</p>}
-            <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
-              {records.map((record) => (
-                <div key={record.id} className="rounded border border-slate-200 bg-slate-50 p-2 text-xs">
-                  <button className="block w-full text-left hover:text-indigo-700" onClick={() => loadCertificate(record)}>
-                    <span className="block font-semibold text-slate-900">{record.borrowerName}</span>
-                    <span className="block text-slate-500">{record.date || 'No date'} | Rs. {formatMoney(record.totalMarketValue)}</span>
-                  </button>
-                  <div className="mt-2 flex gap-2">
-                    <button className="rounded border border-slate-300 px-2 py-1 font-semibold text-slate-700" onClick={() => loadCertificate(record)}>Load</button>
-                    <button className="rounded border border-slate-300 px-2 py-1 font-semibold text-slate-700" onClick={() => downloadRecordPdf(record)}>PDF</button>
-                    {record.itemImageUrl && <a className="rounded border border-slate-300 px-2 py-1 font-semibold text-slate-700" href={record.itemImageUrl} target="_blank" rel="noreferrer">Photo</a>}
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Saved Records</h2>
+                <p className="text-xs text-slate-500">Search recent certificates</p>
+              </div>
+              <Link className="text-sm font-semibold text-indigo-600" to="/records">View all</Link>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <input className="h-10 min-w-0 flex-1 rounded border border-slate-300 px-3 text-sm" value={recordSearch} onChange={(event) => setRecordSearch(event.target.value)} placeholder="Borrower or ref no." />
+              <button className="rounded bg-slate-900 px-3 text-sm font-semibold text-white" onClick={() => fetchRecords(recordSearch)} type="button">Search</button>
+            </div>
+            <div className="mt-4 space-y-2">
+              {records.slice(0, 5).map((record) => (
+                <div key={record.id} className="rounded border border-slate-200 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <button className="truncate text-left text-sm font-semibold text-indigo-600 hover:underline" onClick={() => loadCertificate(record)} type="button">{record.borrowerName}</button>
+                    <span className="text-xs text-slate-400">{record.refNo || '—'}</span>
                   </div>
+                  <button className="mt-2 text-xs font-semibold text-slate-600 hover:text-slate-900" onClick={() => downloadRecordPdf(record)} type="button">Download PDF</button>
                 </div>
               ))}
+              {!records.length && <p className="py-4 text-center text-sm text-slate-400">Search to load saved records.</p>}
             </div>
-          </div>
+          </section>
         </aside>
       </div>
+
+      {(error || saveStatus) && (
+        <div className="fixed inset-x-3 bottom-3 z-20 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-lg sm:inset-x-auto sm:right-5 sm:w-[380px]">
+          {error && <p className="font-semibold text-red-600">{error}</p>}
+          {saveStatus && <p className="mt-1 text-slate-600">{saveStatus}</p>}
+        </div>
+      )}
     </main>
-  );
-}
-
-function Metric({ label, value, wide = false }) {
-  return (
-    <div className={`rounded border border-slate-200 bg-slate-50 p-3 ${wide ? 'col-span-2' : ''}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-bold text-slate-950">{value}</p>
-    </div>
-  );
-}
-
-function SummaryTable({ title, summaries, valueKey }) {
-  return (
-    <div className="mt-3">
-      <p className="mb-1 text-xs font-semibold text-slate-500">{title}</p>
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr>
-            {summaries.map((summary) => (
-              <th key={summary.purity} className="border border-slate-200 bg-slate-100 p-2">{summary.purity}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            {summaries.map((summary) => (
-              <td key={summary.purity} className="border border-slate-200 p-2 text-center">{formatWeight(summary[valueKey])} gm</td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-    </div>
   );
 }
 
