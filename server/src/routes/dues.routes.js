@@ -7,9 +7,11 @@ import {
   listPayments,
   recordPayment,
   updateDue,
-} from '../controllers/dues.controller.js';
+} from '../controllers/duesAuth.controller.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+router.use(requireAuth);
 
 router.get('/candidates', listDueCandidates);
 router.get('/certificate/:certificateId/payments', listPayments);
