@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { createCertificate, deleteCertificate, getCertificate, getNextSerial, listCertificates } from '../controllers/certificates.controller.js';
+import { createCertificate, deleteCertificate, getCertificate, listCertificates } from '../controllers/certificates.controller.js';
+import { getNextSerial } from '../controllers/nextSerial.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
