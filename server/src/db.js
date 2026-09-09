@@ -13,8 +13,12 @@ export async function initDb() {
       id BIGSERIAL PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE app_users
+      ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
 
     CREATE TABLE IF NOT EXISTS app_sessions (
       id BIGSERIAL PRIMARY KEY,
@@ -35,9 +39,17 @@ export async function initDb() {
       item_image_url TEXT,
       total_market_value NUMERIC(14,2) NOT NULL DEFAULT 0,
       payload JSONB NOT NULL,
+      user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE certificates
+      ADD COLUMN IF NOT EXISTS user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL;
+
+    CREATE INDEX IF NOT EXISTS idx_certificates_user_id ON certificates(user_id);
+    CREATE INDEX IF NOT EXISTS idx_certificates_created_at ON certificates(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_certificates_ref_no ON certificates(ref_no);
 
     CREATE TABLE IF NOT EXISTS certificate_dues (
       id BIGSERIAL PRIMARY KEY,
@@ -65,11 +77,25 @@ export async function initDb() {
       archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
-    CREATE INDEX IF NOT EXISTS idx_certificates_created_at ON certificates(created_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_certificates_ref_no ON certificates(ref_no);
     CREATE INDEX IF NOT EXISTS idx_due_payments_due_id ON due_payments(due_id);
     CREATE INDEX IF NOT EXISTS idx_deleted_payment_history_certificate_id ON deleted_certificate_payment_history(certificate_id);
   `);
 
-  await pool.query("DELETE FROM app_sessions WHERE expires_at <= NOW()");
+  await pool.query(`
+    DO $$
+    DECLARE
+      admin_id BIGINT;
+    BEGIN
+      SELECT id INTO admin_id FROM app_users ORDER BY id ASC LIMIT 1;
+      IF admin_id IS NOT NULL THEN
+        UPDATE app_users
+        SET role = CASE WHEN id = admin_id THEN 'admin' ELSE 'user' END;
+        UPDATE certificates
+        SET user_id = admin_id
+        WHERE user_id IS NULL;
+      END IF;
+    END $$;
+  `);
+
+  await pool.query('DELETE FROM app_sessions WHERE expires_at <= NOW()');
 }
