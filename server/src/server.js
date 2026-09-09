@@ -7,6 +7,8 @@ import uploadsRouter from './routes/uploads.routes.js';
 import branchCashInChargeRouter from './routes/branchCashInCharge.routes.js';
 import duesRouter from './routes/dues.routes.js';
 import googleBackupRouter from './routes/googleBackup.routes.js';
+import authRouter from './routes/auth.routes.js';
+import { requireAuth } from './middleware/auth.js';
 import { initDb } from './db.js';
 
 const app = express();
@@ -27,6 +29,7 @@ app.use(
       }
       callback(new Error('Not allowed by CORS'));
     },
+    credentials: true,
   }),
 );
 app.use(express.json({ limit: '10mb' }));
@@ -43,11 +46,12 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-app.use('/api/certificates', certificatesRouter);
-app.use('/api/uploads', uploadsRouter);
-app.use('/api/branch-cash-in-charge', branchCashInChargeRouter);
-app.use('/api/dues', duesRouter);
-app.use('/api/backup', googleBackupRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/certificates', requireAuth, certificatesRouter);
+app.use('/api/uploads', requireAuth, uploadsRouter);
+app.use('/api/branch-cash-in-charge', requireAuth, branchCashInChargeRouter);
+app.use('/api/dues', requireAuth, duesRouter);
+app.use('/api/backup', requireAuth, googleBackupRouter);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
